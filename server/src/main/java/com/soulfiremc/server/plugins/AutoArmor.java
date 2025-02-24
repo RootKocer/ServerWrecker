@@ -17,24 +17,37 @@
  */
 package com.soulfiremc.server.plugins;
 
-import com.soulfiremc.server.api.PluginHelper;
-import com.soulfiremc.server.api.SoulFireAPI;
+import com.soulfiremc.server.api.InternalPlugin;
+import com.soulfiremc.server.api.PluginInfo;
 import com.soulfiremc.server.api.event.bot.BotJoinedEvent;
-import com.soulfiremc.server.api.event.lifecycle.SettingsRegistryInitEvent;
+import com.soulfiremc.server.api.event.lifecycle.InstanceSettingsRegistryInitEvent;
 import com.soulfiremc.server.data.ArmorType;
+import com.soulfiremc.server.protocol.bot.ControllingTask;
 import com.soulfiremc.server.protocol.bot.container.InventoryManager;
 import com.soulfiremc.server.settings.lib.SettingsObject;
-import com.soulfiremc.server.settings.property.BooleanProperty;
-import com.soulfiremc.server.settings.property.MinMaxPropertyLink;
-import com.soulfiremc.server.settings.property.Property;
-import com.soulfiremc.server.util.TimeUtil;
-import java.util.Arrays;
-import java.util.concurrent.TimeUnit;
+import com.soulfiremc.server.settings.property.*;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import net.lenni0451.lambdaevents.EventHandler;
+import org.pf4j.Extension;
 
-public class AutoArmor implements InternalPlugin {
+import java.util.Arrays;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
+
+@Extension
+public class AutoArmor extends InternalPlugin {
+  public AutoArmor() {
+    super(new PluginInfo(
+      "auto-armor",
+      "1.0.0",
+      "Automatically puts on the best armor",
+      "AlexProgrammerDE",
+      "GPL-3.0",
+      "https://soulfiremc.com"
+    ));
+  }
+
   private static void putOn(
     InventoryManager inventoryManager,
     ArmorType armorType) {
@@ -70,7 +83,7 @@ public class AutoArmor implements InternalPlugin {
       return;
     }
 
-    var equipmentSlot = inventory.getEquipmentSlot(armorType.toEquipmentSlot());
+    var equipmentSlot = inventory.getEquipmentSlot(armorType.toEquipmentSlot()).orElseThrow();
     var equipmentSlotItem = equipmentSlot.item();
     if (equipmentSlotItem != null) {
       var targetIndex = armorType.itemTypes().indexOf(equipmentSlotItem.type());
@@ -81,83 +94,78 @@ public class AutoArmor implements InternalPlugin {
       }
     }
 
-    if (!inventoryManager.tryInventoryControl()) {
+    if (inventoryManager.lookingAtForeignContainer()) {
       return;
     }
 
-    try {
-      inventoryManager.leftClickSlot(bestItemSlot);
-      TimeUtil.waitTime(50, TimeUnit.MILLISECONDS);
-      inventoryManager.leftClickSlot(equipmentSlot);
-      TimeUtil.waitTime(50, TimeUnit.MILLISECONDS);
-
-      if (inventoryManager.cursorItem() != null) {
-        inventoryManager.leftClickSlot(bestItemSlot);
-        TimeUtil.waitTime(50, TimeUnit.MILLISECONDS);
-      }
-    } finally {
-      inventoryManager.unlockInventoryControl();
-    }
+    inventoryManager.connection().botControl().maybeRegister(ControllingTask.staged(List.of(
+      new ControllingTask.RunnableStage(inventoryManager::openPlayerInventory),
+      new ControllingTask.RunnableStage(() -> inventoryManager.leftClickSlot(bestItemSlot)),
+      new ControllingTask.WaitDelayStage(() -> 50L),
+      new ControllingTask.RunnableStage(() -> inventoryManager.leftClickSlot(equipmentSlot)),
+      new ControllingTask.WaitDelayStage(() -> 50L),
+      new ControllingTask.RunnableStage(() -> {
+        if (inventoryManager.cursorItem() != null) {
+          inventoryManager.leftClickSlot(bestItemSlot);
+        }
+      }),
+      new ControllingTask.WaitDelayStage(() -> 50L),
+      new ControllingTask.RunnableStage(inventoryManager::closeInventory)
+    )));
   }
 
+  @EventHandler
   public static void onJoined(BotJoinedEvent event) {
     var connection = event.connection();
-    var settingsHolder = connection.settingsHolder();
-    if (!settingsHolder.get(AutoArmorSettings.ENABLED)) {
-      return;
-    }
-
-    connection.scheduler().scheduleWithRandomDelay(
+    var settingsSource = connection.settingsSource();
+    connection.scheduler().scheduleWithDynamicDelay(
       () -> {
+        if (!settingsSource.get(AutoArmorSettings.ENABLED)) {
+          return;
+        }
+
         for (var type : ArmorType.VALUES) {
-          putOn(connection.dataManager().inventoryManager(), type);
+          putOn(connection.inventoryManager(), type);
         }
       },
-      settingsHolder.get(AutoArmorSettings.DELAY.min()),
-      settingsHolder.get(AutoArmorSettings.DELAY.max()),
+      settingsSource.getRandom(AutoArmorSettings.DELAY).asLongSupplier(),
       TimeUnit.SECONDS);
   }
 
   @EventHandler
-  public static void onSettingsRegistryInit(SettingsRegistryInitEvent event) {
-    event.settingsRegistry().addClass(AutoArmorSettings.class, "Auto Armor");
-  }
-
-  @Override
-  public void onLoad() {
-    SoulFireAPI.registerListeners(AutoArmor.class);
-    PluginHelper.registerBotEventConsumer(BotJoinedEvent.class, AutoArmor::onJoined);
+  public void onSettingsRegistryInit(InstanceSettingsRegistryInitEvent event) {
+    event.settingsRegistry().addPluginPage(AutoArmorSettings.class, "Auto Armor", this, "shield", AutoArmorSettings.ENABLED);
   }
 
   @NoArgsConstructor(access = AccessLevel.NONE)
   private static class AutoArmorSettings implements SettingsObject {
-    private static final Property.Builder BUILDER = Property.builder("auto-armor");
+    private static final String NAMESPACE = "auto-armor";
     public static final BooleanProperty ENABLED =
-      BUILDER.ofBoolean(
-        "enabled",
-        "Enable Auto Armor",
-        new String[] {"--auto-armor"},
-        "Put on best armor automatically",
-        true);
-    public static final MinMaxPropertyLink DELAY =
-      new MinMaxPropertyLink(
-        BUILDER.ofInt(
-          "min-delay",
-          "Min delay (seconds)",
-          new String[] {"--armor-min-delay"},
-          "Minimum delay between putting on armor",
-          1,
-          0,
-          Integer.MAX_VALUE,
-          1),
-        BUILDER.ofInt(
-          "max-delay",
-          "Max delay (seconds)",
-          new String[] {"--armor-max-delay"},
-          "Maximum delay between putting on armor",
-          2,
-          0,
-          Integer.MAX_VALUE,
-          1));
+      ImmutableBooleanProperty.builder()
+        .namespace(NAMESPACE)
+        .key("enabled")
+        .uiName("Enable Auto Armor")
+        .description("Put on best armor automatically")
+        .defaultValue(true)
+        .build();
+    public static final MinMaxProperty DELAY =
+      ImmutableMinMaxProperty.builder()
+        .namespace(NAMESPACE)
+        .key("delay")
+        .minValue(0)
+        .maxValue(Integer.MAX_VALUE)
+        .minEntry(
+          ImmutableMinMaxPropertyEntry.builder()
+            .uiName("Min delay (seconds)")
+            .description("Minimum delay between putting on armor")
+            .defaultValue(1)
+            .build())
+        .maxEntry(
+          ImmutableMinMaxPropertyEntry.builder()
+            .uiName("Max delay (seconds)")
+            .description("Maximum delay between putting on armor")
+            .defaultValue(2)
+            .build())
+        .build();
   }
 }

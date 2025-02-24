@@ -17,22 +17,23 @@
  */
 package com.soulfiremc.server.protocol.netty;
 
-import com.soulfiremc.server.settings.BotSettings;
-import com.soulfiremc.server.settings.lib.SettingsHolder;
-import com.soulfiremc.util.ServerAddress;
+import com.soulfiremc.server.settings.instance.BotSettings;
+import com.soulfiremc.server.settings.lib.InstanceSettingsSource;
+import com.soulfiremc.server.util.structs.ServerAddress;
+import lombok.extern.slf4j.Slf4j;
+
+import javax.naming.directory.DirContext;
+import javax.naming.directory.InitialDirContext;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.SocketAddress;
 import java.net.UnknownHostException;
 import java.util.Hashtable;
 import java.util.Optional;
-import javax.naming.directory.DirContext;
-import javax.naming.directory.InitialDirContext;
-import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class ResolveUtil {
-  public static final int MC_DEFAULT_PORT = 25565;
+  public static final int MC_JAVA_DEFAULT_PORT = 25565;
+  public static final int MC_BEDROCK_DEFAULT_PORT = 19132;
   private static final DirContext DIR_CONTEXT;
 
   static {
@@ -52,13 +53,14 @@ public class ResolveUtil {
   private ResolveUtil() {}
 
   public static Optional<ResolvedAddress> resolveAddress(
-    boolean isBedrock, SettingsHolder settingsHolder) {
+    boolean isBedrock, InstanceSettingsSource settingsSource) {
+    var defaultPort = isBedrock ? MC_BEDROCK_DEFAULT_PORT : MC_JAVA_DEFAULT_PORT;
     var serverAddress =
       ServerAddress.fromStringDefaultPort(
-        settingsHolder.get(BotSettings.ADDRESS), MC_DEFAULT_PORT);
+        settingsSource.get(BotSettings.ADDRESS), defaultPort);
 
-    if (settingsHolder.get(BotSettings.RESOLVE_SRV)
-      && serverAddress.port() == MC_DEFAULT_PORT
+    if (settingsSource.get(BotSettings.RESOLVE_SRV)
+      && serverAddress.port() == defaultPort
       && !isBedrock) {
       // SRVs can override address on Java, but not Bedrock.
       var resolved = resolveSrv(serverAddress);
@@ -77,13 +79,13 @@ public class ResolveUtil {
     log.debug("Attempting SRV lookup for \"{}\".", name);
 
     try {
-      var srvAttribute = DIR_CONTEXT.getAttributes(name, new String[] {"SRV"}).get("srv");
+      var srvAttribute = DIR_CONTEXT.getAttributes(name, new String[]{"SRV"}).get("srv");
       if (srvAttribute != null) {
         var attributeSplit = srvAttribute.get().toString().split(" ", 4);
         log.debug("SRV lookup resolved \"{}\" to \"{}\".", name, srvAttribute.get().toString());
 
         return resolveByHost(
-          ServerAddress.fromStringAndPort(attributeSplit[3], parsePort(attributeSplit[2])))
+          ServerAddress.fromStringAndPort(attributeSplit[3], parseJavaPort(attributeSplit[2])))
           .map(e -> new ResolvedAddress(serverAddress, e));
       } else {
         log.debug("SRV lookup for \"{}\" returned no records.", name);
@@ -95,7 +97,7 @@ public class ResolveUtil {
     return Optional.empty();
   }
 
-  private static Optional<SocketAddress> resolveByHost(ServerAddress serverAddress) {
+  private static Optional<InetSocketAddress> resolveByHost(ServerAddress serverAddress) {
     try {
       var host = serverAddress.host();
       var resolved = InetAddress.getByName(host);
@@ -107,13 +109,13 @@ public class ResolveUtil {
     }
   }
 
-  private static int parsePort(String port) {
+  private static int parseJavaPort(String port) {
     try {
       return Integer.parseInt(port);
     } catch (NumberFormatException e) {
-      return MC_DEFAULT_PORT;
+      return MC_JAVA_DEFAULT_PORT;
     }
   }
 
-  public record ResolvedAddress(ServerAddress originalAddress, SocketAddress resolvedAddress) {}
+  public record ResolvedAddress(ServerAddress originalAddress, InetSocketAddress resolvedAddress) {}
 }

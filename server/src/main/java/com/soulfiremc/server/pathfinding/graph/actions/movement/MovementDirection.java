@@ -18,78 +18,63 @@
 package com.soulfiremc.server.pathfinding.graph.actions.movement;
 
 import com.soulfiremc.server.pathfinding.SFVec3i;
-import com.soulfiremc.server.pathfinding.graph.BlockFace;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
 public enum MovementDirection {
-  NORTH,
-  SOUTH,
-  EAST,
-  WEST,
-  NORTH_EAST,
-  NORTH_WEST,
-  SOUTH_EAST,
-  SOUTH_WEST;
+  NORTH(new SFVec3i(0, 0, -1), SkyDirection.NORTH, null, ActionDirection.NORTH),
+  SOUTH(new SFVec3i(0, 0, 1), SkyDirection.SOUTH, null, ActionDirection.SOUTH),
+  EAST(new SFVec3i(1, 0, 0), SkyDirection.EAST, null, ActionDirection.EAST),
+  WEST(new SFVec3i(-1, 0, 0), SkyDirection.WEST, null, ActionDirection.WEST),
+  NORTH_EAST(new SFVec3i(1, 0, -1), null, DiagonalDirection.NORTH_EAST, ActionDirection.NORTH_EAST),
+  NORTH_WEST(new SFVec3i(-1, 0, -1), null, DiagonalDirection.NORTH_WEST, ActionDirection.NORTH_WEST),
+  SOUTH_EAST(new SFVec3i(1, 0, 1), null, DiagonalDirection.SOUTH_EAST, ActionDirection.SOUTH_EAST),
+  SOUTH_WEST(new SFVec3i(-1, 0, 1), null, DiagonalDirection.SOUTH_WEST, ActionDirection.SOUTH_WEST);
 
   public static final MovementDirection[] VALUES = values();
 
-  public SkyDirection side(MovementSide side) {
-    return switch (this) {
-      case NORTH_EAST -> switch (side) {
-        case LEFT -> SkyDirection.NORTH;
-        case RIGHT -> SkyDirection.EAST;
-      };
-      case NORTH_WEST -> switch (side) {
-        case LEFT -> SkyDirection.NORTH;
-        case RIGHT -> SkyDirection.WEST;
-      };
-      case SOUTH_EAST -> switch (side) {
-        case LEFT -> SkyDirection.SOUTH;
-        case RIGHT -> SkyDirection.EAST;
-      };
-      case SOUTH_WEST -> switch (side) {
-        case LEFT -> SkyDirection.SOUTH;
-        case RIGHT -> SkyDirection.WEST;
-      };
-      default -> throw new IllegalStateException("Unexpected value: " + this);
-    };
+  static {
+    NORTH.opposite = SOUTH;
+    SOUTH.opposite = NORTH;
+    EAST.opposite = WEST;
+    WEST.opposite = EAST;
+    NORTH_EAST.opposite = SOUTH_WEST;
+    NORTH_WEST.opposite = SOUTH_EAST;
+    SOUTH_EAST.opposite = NORTH_WEST;
+    SOUTH_WEST.opposite = NORTH_EAST;
+  }
+
+  @Getter
+  private final SFVec3i offsetVector;
+  private final SkyDirection skyDirection;
+  private final DiagonalDirection diagonalDirection;
+  @Getter
+  private final ActionDirection actionDirection;
+  @Getter
+  private MovementDirection opposite;
+
+  public SFVec3i offset(SFVec3i vector) {
+    return vector.add(offsetVector);
   }
 
   public SkyDirection toSkyDirection() {
-    return switch (this) {
-      case NORTH -> SkyDirection.NORTH;
-      case SOUTH -> SkyDirection.SOUTH;
-      case EAST -> SkyDirection.EAST;
-      case WEST -> SkyDirection.WEST;
-      default -> throw new IllegalStateException("Unexpected value: " + this);
-    };
+    if (skyDirection == null) {
+      throw new IllegalStateException("Unexpected value: " + this);
+    }
+
+    return skyDirection;
   }
 
-  public BlockFace toBlockFace() {
-    return switch (this) {
-      case NORTH -> BlockFace.NORTH;
-      case SOUTH -> BlockFace.SOUTH;
-      case EAST -> BlockFace.EAST;
-      case WEST -> BlockFace.WEST;
-      default -> throw new IllegalStateException("Unexpected value: " + this);
-    };
-  }
+  public DiagonalDirection toDiagonalDirection() {
+    if (diagonalDirection == null) {
+      throw new IllegalStateException("Unexpected value: " + this);
+    }
 
-  public SFVec3i offset(SFVec3i vector) {
-    return switch (this) {
-      case NORTH -> vector.add(0, 0, -1);
-      case SOUTH -> vector.add(0, 0, 1);
-      case EAST -> vector.add(1, 0, 0);
-      case WEST -> vector.add(-1, 0, 0);
-      case NORTH_EAST -> vector.add(1, 0, -1);
-      case NORTH_WEST -> vector.add(-1, 0, -1);
-      case SOUTH_EAST -> vector.add(1, 0, 1);
-      case SOUTH_WEST -> vector.add(-1, 0, 1);
-    };
+    return diagonalDirection;
   }
 
   public boolean isDiagonal() {
-    return this == NORTH_EAST || this == NORTH_WEST || this == SOUTH_EAST || this == SOUTH_WEST;
+    return diagonalDirection != null;
   }
 }

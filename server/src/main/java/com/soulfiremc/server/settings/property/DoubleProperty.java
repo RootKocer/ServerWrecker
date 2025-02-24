@@ -17,17 +17,45 @@
  */
 package com.soulfiremc.server.settings.property;
 
-import javax.annotation.Nullable;
+import org.immutables.value.Value;
 
-public record DoubleProperty(
-  String namespace,
-  String key,
-  String uiName,
-  String[] cliFlags,
-  String description,
-  double defaultValue,
-  double minValue,
-  double maxValue,
-  double stepValue,
-  @Nullable String format)
-  implements SingleProperty {}
+@Value.Immutable
+@Value.Style(stagedBuilder = true)
+public non-sealed abstract class DoubleProperty implements Property {
+  public abstract String key();
+
+  public abstract String uiName();
+
+  public abstract String description();
+
+  public abstract double defaultValue();
+
+  public abstract double minValue();
+
+  public abstract double maxValue();
+
+  @Value.Default
+  public double stepValue() {
+    return 1;
+  }
+
+  @Value.Default
+  public String placeholder() {
+    return "";
+  }
+
+  @Value.Default
+  public boolean thousandSeparator() {
+    return true;
+  }
+
+  @Value.Default
+  public int decimalScale() {
+    return 2;
+  }
+
+  @Value.Default
+  public boolean fixedDecimalScale() {
+    return true;
+  }
+}

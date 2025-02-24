@@ -1,12 +1,15 @@
+import me.champeau.jmh.JMHTask
+
 plugins {
   `sf-project-conventions`
   alias(libs.plugins.jmh)
 }
 
 dependencies {
+  libs.bundles.bom.get().forEach { api(platform(it)) }
+
   implementation(projects.buildData)
   api(projects.proto)
-  api(projects.common)
 
   // Main protocol library
   api(libs.mcprotocollib) {
@@ -14,7 +17,6 @@ dependencies {
   }
   api(libs.mcstructs)
   api(libs.bundles.kyori)
-  api(libs.datafixerupper)
 
   // Netty raknet support for ViaBedrock
   api(libs.netty.raknet) {
@@ -49,12 +51,68 @@ dependencies {
   // For profiling
   api(libs.spark)
 
+  // Log/Console libraries
+  api(libs.bundles.log4j)
+  api(libs.jline)
+  api(libs.jansi)
+  api(libs.bundles.ansi4j)
+  api(libs.terminalconsoleappender)
+  api(libs.slf4j)
+  api(libs.disruptor)
+
+  // For command handling
+  api(libs.brigadier)
+
+  api(libs.commons.validator)
+  api(libs.commons.io)
+
+  api(libs.oshi)
+  api(libs.openai)
+
+  api(libs.guava)
+  api(libs.gson)
+  api(libs.pf4j)
+  annotationProcessor(libs.pf4j)
+  api(libs.fastutil)
+  api(libs.caffeine)
+  api(libs.jetbrains.annotations)
+  compileOnly(libs.immutables)
+  annotationProcessor(libs.immutables)
+
+  api(libs.bundles.armeria)
+  api(libs.bundles.reactor.netty)
+
+  api(libs.bundles.mixins)
+  api(libs.reflect)
+  api(libs.lambdaevents)
+
+  // For class injection
+  api(libs.injector)
+
+  // For database support
+  api(libs.bundles.hibernate)
+  api(libs.hikaricp)
+  api(libs.sqlite)
+
+  // For script support
+  api(libs.bundles.graalvm.polyglot)
+
+  // For mail support
+  api(libs.angus)
+
+  // For tls cert provisioning
+  api(libs.acme4j)
+
+  testRuntimeOnly(libs.junit.launcher)
   testImplementation(libs.junit)
 }
 
 tasks {
   withType<Checkstyle> {
     exclude("**/com/soulfiremc/server/data**")
+  }
+  withType<JMHTask> {
+    outputs.upToDateWhen { false }
   }
 }
 

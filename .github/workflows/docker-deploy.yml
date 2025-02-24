@@ -1,15 +1,17 @@
 name: Docker Deploy
-on: [ release ]
+on: [ release, workflow_dispatch ]
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      - name: Validate Gradle wrapper
-        uses: gradle/actions/wrapper-validation@v3
+        with:
+          persist-credentials: false
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
       - name: Set version
         id: set-version
         run: |
@@ -29,8 +31,8 @@ jobs:
           driver-opts: |
             image=moby/buildkit:v0.11.6
           platforms: linux/amd64,linux/arm64
-      - name: Build and push
-        uses: docker/build-push-action@v5
+      - name: Build and Push
+        uses: docker/build-push-action@v6
         with:
           context: ./
           file: ./Dockerfile

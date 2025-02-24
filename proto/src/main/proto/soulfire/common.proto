@@ -1,0 +1,128 @@
+syntax = "proto3";
+
+option java_package = "com.soulfiremc.grpc.generated";
+option java_multiple_files = true;
+
+package soulfire.v1;
+
+import "google/protobuf/struct.proto";
+
+message ProxyProto {
+  enum Type {
+    HTTP = 0;
+    SOCKS4 = 1;
+    SOCKS5 = 2;
+  }
+
+  Type type = 1;
+  string address = 2;
+  optional string username = 3;
+  optional string password = 4;
+}
+
+enum AccountTypeCredentials {
+  MICROSOFT_JAVA_CREDENTIALS = 0;
+  MICROSOFT_BEDROCK_CREDENTIALS = 1;
+  THE_ALTENING = 3;
+  OFFLINE = 4;
+  MICROSOFT_JAVA_REFRESH_TOKEN = 5;
+}
+
+enum AccountTypeDeviceCode {
+  MICROSOFT_JAVA_DEVICE_CODE = 0;
+  MICROSOFT_BEDROCK_DEVICE_CODE = 1;
+}
+
+message MinecraftAccountProto {
+  enum AccountTypeProto {
+    MICROSOFT_JAVA_CREDENTIALS = 0;
+    MICROSOFT_BEDROCK_CREDENTIALS = 1;
+    THE_ALTENING = 3;
+    OFFLINE = 4;
+    MICROSOFT_JAVA_DEVICE_CODE = 5;
+    MICROSOFT_BEDROCK_DEVICE_CODE = 6;
+    MICROSOFT_JAVA_REFRESH_TOKEN = 7;
+  }
+
+  message OnlineSimpleJavaData {
+    string auth_token = 1;
+    int64 token_expire_at = 2;
+  }
+
+  message OnlineChainJavaData {
+    string auth_token = 1;
+    int64 token_expire_at = 2;
+    google.protobuf.Struct auth_chain = 3;
+  }
+
+  message OfflineJavaData {
+  }
+
+  message BedrockData {
+    string mojang_jwt = 1;
+    string identity_jwt = 2;
+    string public_key = 3;
+    string private_key = 4;
+    string device_id = 5;
+    string play_fab_id = 6;
+    google.protobuf.Struct auth_chain = 7;
+  }
+
+  AccountTypeProto type = 1;
+  string profile_id = 2;
+  string last_known_name = 3;
+  oneof account_data {
+    OnlineSimpleJavaData online_simple_java_data = 4;
+    OnlineChainJavaData online_chain_java_data = 5;
+    OfflineJavaData offline_java_data = 6;
+    BedrockData bedrock_data = 7;
+  }
+}
+
+message SettingsEntry {
+  string key = 1;
+  google.protobuf.Value value = 2;
+}
+
+message SettingsNamespace {
+  string namespace = 1;
+  repeated SettingsEntry entries = 2;
+}
+
+enum GlobalPermission {
+  CREATE_INSTANCE = 0;
+  GLOBAL_SUBSCRIBE_LOGS = 1;
+  READ_CLIENT_DATA = 2;
+  READ_SERVER_CONFIG = 3;
+  UPDATE_SERVER_CONFIG = 4;
+  CREATE_USER = 5;
+  READ_USER = 6;
+  UPDATE_USER = 7;
+  DELETE_USER = 8;
+  INVALIDATE_SESSIONS = 11;
+  GLOBAL_COMMAND_EXECUTION = 9;
+  GLOBAL_COMMAND_COMPLETION = 10;
+}
+
+enum InstancePermission {
+  INSTANCE_COMMAND_EXECUTION = 0;
+  INSTANCE_COMMAND_COMPLETION = 1;
+  READ_INSTANCE = 2;
+  UPDATE_INSTANCE_META = 3;
+  UPDATE_INSTANCE_CONFIG = 14;
+  DELETE_INSTANCE = 4;
+  CHANGE_INSTANCE_STATE = 5;
+  AUTHENTICATE_MC_ACCOUNT = 6;
+  CHECK_PROXY = 7;
+  DOWNLOAD_URL = 8;
+  UPLOAD_OBJECT_STORAGE = 9;
+  DOWNLOAD_OBJECT_STORAGE = 10;
+  DELETE_OBJECT_STORAGE = 11;
+  LIST_OBJECT_STORAGE = 12;
+  INSTANCE_SUBSCRIBE_LOGS = 13;
+}
+
+enum UserRole {
+  ADMIN = 0;
+  USER = 1;
+}

@@ -17,80 +17,79 @@
  */
 package com.soulfiremc.server;
 
-import com.soulfiremc.server.util.RandomUtil;
 import it.unimi.dsi.fastutil.PriorityQueue;
 import it.unimi.dsi.fastutil.objects.ObjectHeapPriorityQueue;
-import java.util.concurrent.ForkJoinPool;
-import java.util.concurrent.TimeUnit;
-import java.util.function.Function;
-import lombok.RequiredArgsConstructor;
+import lombok.Setter;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 
-@RequiredArgsConstructor
-public class SoulFireScheduler {
-  private static final Thread.Builder.OfVirtual managementThreadBuilder = Thread.ofVirtual()
-    .name("SoulFireScheduler-Management-", 0);
+import java.util.concurrent.*;
+import java.util.function.LongSupplier;
+import java.util.function.Supplier;
+
+/**
+ * Lightweight scheduler for async tasks.
+ * Used for most of the async tasks in the server, bots and plugins.
+ */
+public class SoulFireScheduler implements Executor {
+  private static final ScheduledExecutorService MANAGEMENT_SERVICE = Executors.newSingleThreadScheduledExecutor(Thread.ofVirtual()
+    .name("SoulFireScheduler-Management-", 0)
+    .factory());
+  private final ExecutorService executor = Executors.newThreadPerTaskExecutor(Thread.ofVirtual()
+    .name("SoulFireScheduler-Task-", 0)
+    .factory());
   private final PriorityQueue<TimedRunnable> executionQueue = new ObjectHeapPriorityQueue<>();
-  private final ForkJoinPool mainThreadExecutor;
   private final Logger logger;
-  private final Function<Runnable, Runnable> runnableWrapper;
-  private boolean shutdown = false;
+  private final RunnableWrapper runnableWrapper;
+  @Setter
+  private boolean blockNewTasks = false;
+  private boolean isShutdown = false;
 
-  public SoulFireScheduler(Logger logger) {
-    this(logger, r -> r);
-  }
-
-  public SoulFireScheduler(Logger logger, Function<Runnable, Runnable> runnableWrapper) {
-    this.mainThreadExecutor = new ForkJoinPool(ForkJoinPool.getCommonPoolParallelism(),
-      ForkJoinPool.defaultForkJoinWorkerThreadFactory,
-      null, true);
+  public SoulFireScheduler(Logger logger, RunnableWrapper runnableWrapper) {
     this.logger = logger;
     this.runnableWrapper = runnableWrapper;
 
-    managementThreadBuilder.start(this::managementTask);
+    MANAGEMENT_SERVICE.submit(this::managementTask);
   }
 
-  @SuppressWarnings("BusyWait")
   public void managementTask() {
-    try {
-      while (!shutdown) {
-        synchronized (executionQueue) {
-          while (!executionQueue.isEmpty() && executionQueue.first().isReady()) {
-            var timedRunnable = executionQueue.dequeue();
-            schedule(() -> runCommand(timedRunnable.runnable()));
-          }
-        }
-
-        Thread.sleep(1);
-      }
-    } catch (InterruptedException e) {
-      logger.info("Management thread interrupted");
-    }
-  }
-
-  public void schedule(Runnable command) {
-    if (shutdown) {
-      return;
-    }
-
-    mainThreadExecutor.execute(() -> runCommand(command));
-  }
-
-  public void schedule(Runnable command, long delay, TimeUnit unit) {
-    if (shutdown) {
+    if (isShutdown) {
       return;
     }
 
     synchronized (executionQueue) {
+      while (!blockNewTasks && !executionQueue.isEmpty() && executionQueue.first().isReady()) {
+        var timedRunnable = executionQueue.dequeue();
+        schedule(() -> runCommand(timedRunnable.runnable()));
+      }
+    }
+
+    MANAGEMENT_SERVICE.schedule(this::managementTask, 1, TimeUnit.MILLISECONDS);
+  }
+
+  public void schedule(Runnable command) {
+    if (blockNewTasks) {
+      return;
+    }
+
+    executor.execute(() -> runCommand(command));
+  }
+
+  public void schedule(Runnable command, long delay, TimeUnit unit) {
+    if (blockNewTasks) {
+      return;
+    }
+
+    synchronized (executionQueue) {
+      if (blockNewTasks) {
+        return;
+      }
+
       executionQueue.enqueue(TimedRunnable.of(command, delay, unit));
     }
   }
 
   public void scheduleAtFixedRate(Runnable command, long delay, long period, TimeUnit unit) {
-    if (shutdown) {
-      return;
-    }
-
     schedule(() -> {
       scheduleAtFixedRate(command, period, period, unit);
       runCommand(command);
@@ -98,37 +97,95 @@ public class SoulFireScheduler {
   }
 
   public void scheduleWithFixedDelay(Runnable command, long delay, long period, TimeUnit unit) {
-    if (shutdown) {
-      return;
-    }
-
     schedule(() -> {
       runCommand(command);
       scheduleWithFixedDelay(command, period, period, unit);
     }, delay, unit);
   }
 
-  public void scheduleWithRandomDelay(Runnable command, long minDelay, long maxDelay, TimeUnit unit) {
-    if (shutdown) {
-      return;
-    }
-
+  public void scheduleWithDynamicDelay(Runnable command, LongSupplier delay, TimeUnit unit) {
     schedule(() -> {
       runCommand(command);
-      scheduleWithRandomDelay(command, minDelay, maxDelay, unit);
-    }, RandomUtil.getRandomLong(minDelay, maxDelay), unit);
+      scheduleWithDynamicDelay(command, delay, unit);
+    }, delay.getAsLong(), unit);
+  }
+
+  public void drainQueue() {
+    synchronized (executionQueue) {
+      executionQueue.clear();
+    }
   }
 
   public void shutdown() {
-    shutdown = true;
-    mainThreadExecutor.shutdown();
+    blockNewTasks = true;
+    isShutdown = true;
+    drainQueue();
+  }
+
+  public CompletableFuture<?> runAsync(Runnable command) {
+    return CompletableFuture.runAsync(wrapFuture(command), this);
+  }
+
+  public <T> CompletableFuture<T> supplyAsync(Supplier<T> command) {
+    return CompletableFuture.supplyAsync(wrapFuture(command), this);
+  }
+
+  private Runnable wrapFuture(Runnable command) {
+    return () -> {
+      if (blockNewTasks) {
+        return;
+      }
+
+      try {
+        runnableWrapper.wrap(command).run();
+      } catch (Throwable t) {
+        runnableWrapper.wrap(() ->
+          logger.error("Error in async executor", t)).run();
+        throw new CompletionException(t);
+      }
+    };
+  }
+
+  private <T> Supplier<T> wrapFuture(Supplier<T> command) {
+    return () -> {
+      if (blockNewTasks) {
+        return null;
+      }
+
+      try {
+        return command.get();
+      } catch (Throwable t) {
+        runnableWrapper.wrap(() ->
+          logger.error("Error in async executor", t)).run();
+        throw new CompletionException(t);
+      }
+    };
   }
 
   private void runCommand(Runnable command) {
+    if (blockNewTasks) {
+      return;
+    }
+
     try {
-      runnableWrapper.apply(command).run();
+      runnableWrapper.wrap(command).run();
     } catch (Throwable t) {
-      logger.error("Error in executor", t);
+      runnableWrapper.wrap(() ->
+        logger.error("Error in async executor", t)).run();
+    }
+  }
+
+  @Override
+  public void execute(@NotNull Runnable command) {
+    schedule(command);
+  }
+
+  @FunctionalInterface
+  public interface RunnableWrapper {
+    Runnable wrap(Runnable runnable);
+
+    default RunnableWrapper with(RunnableWrapper child) {
+      return runnable -> child.wrap(wrap(runnable));
     }
   }
 

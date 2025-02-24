@@ -17,12 +17,31 @@
  */
 package com.soulfiremc.server.settings.property;
 
-public record StringProperty(
-  String namespace,
-  String key,
-  String uiName,
-  String[] cliFlags,
-  String description,
-  String defaultValue,
-  boolean secret)
-  implements SingleProperty {}
+import org.immutables.value.Value;
+
+@Value.Immutable
+@Value.Style(stagedBuilder = true)
+public non-sealed abstract class StringProperty implements Property {
+  public abstract String key();
+
+  public abstract String uiName();
+
+  public abstract String description();
+
+  public abstract String defaultValue();
+
+  @Value.Default
+  public boolean secret() {
+    return false;
+  }
+
+  @Value.Default
+  public boolean textarea() {
+    return false;
+  }
+
+  @Value.Default
+  public String placeholder() {
+    return "";
+  }
+}

@@ -18,13 +18,14 @@
 package com.soulfiremc.server.protocol.bot.container;
 
 import com.soulfiremc.server.data.EquipmentSlot;
+import lombok.Getter;
+import org.jetbrains.annotations.Nullable;
+
 import java.util.Optional;
 import java.util.function.Predicate;
-import lombok.Getter;
 
 @Getter
 public class PlayerInventoryContainer extends Container {
-  private final InventoryManager inventoryManager;
   private final ContainerSlot[] mainInventory = getSlots(9, 35);
   private final ContainerSlot[] hotbar = getSlots(36, 44);
 
@@ -37,25 +38,34 @@ public class PlayerInventoryContainer extends Container {
   private final ContainerSlot[] armor = getSlots(5, 8);
   @Getter
   private final ContainerSlot[] craftingGrid = getSlots(1, 4);
+  public int selected;
 
-  public PlayerInventoryContainer(InventoryManager inventoryManager) {
+  public PlayerInventoryContainer() {
     super(46, 0);
-    this.inventoryManager = inventoryManager;
   }
 
-  public ContainerSlot getEquipmentSlot(EquipmentSlot slot) {
+  public Optional<SFItemStack> getEquipmentSlotItem(EquipmentSlot slot) {
+    return getEquipmentSlot(slot).map(ContainerSlot::item);
+  }
+
+  public Optional<ContainerSlot> getEquipmentSlot(EquipmentSlot slot) {
     return switch (slot) {
-      case MAINHAND -> getHeldItem();
-      case OFFHAND -> getOffhand();
-      case HEAD -> getHelmet();
-      case CHEST -> getChestplate();
-      case LEGS -> getLeggings();
-      case FEET -> getBoots();
+      case MAINHAND -> Optional.of(getHeldItem());
+      case OFFHAND -> Optional.of(getOffhand());
+      case HEAD -> Optional.of(getHelmet());
+      case CHEST -> Optional.of(getChestplate());
+      case LEGS -> Optional.of(getLeggings());
+      case FEET -> Optional.of(getBoots());
+      case BODY -> Optional.empty();
     };
   }
 
+  public void setEquipmentSlotItem(EquipmentSlot slot, @Nullable SFItemStack item) {
+    getEquipmentSlot(slot).ifPresent(containerSlot -> containerSlot.setItem(item));
+  }
+
   public ContainerSlot getHeldItem() {
-    return hotbarSlot(inventoryManager.heldItemSlot());
+    return hotbarSlot(selected);
   }
 
   public boolean isHeldItem(ContainerSlot slot) {

@@ -17,32 +17,47 @@
  */
 package com.soulfiremc.server.grpc;
 
-import com.soulfiremc.grpc.generated.CommandCompletionRequest;
-import com.soulfiremc.grpc.generated.CommandCompletionResponse;
-import com.soulfiremc.grpc.generated.CommandRequest;
-import com.soulfiremc.grpc.generated.CommandResponse;
-import com.soulfiremc.grpc.generated.CommandServiceGrpc;
-import com.soulfiremc.server.ServerCommandManager;
-import com.soulfiremc.server.user.Permissions;
+import com.soulfiremc.grpc.generated.*;
+import com.soulfiremc.server.SoulFireServer;
+import com.soulfiremc.server.command.CommandSourceStack;
+import com.soulfiremc.server.command.ServerCommandManager;
+import com.soulfiremc.server.user.PermissionContext;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import io.grpc.stub.StreamObserver;
-import javax.inject.Inject;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
+import javax.inject.Inject;
+import java.util.Set;
+import java.util.UUID;
 
 @Slf4j
 @RequiredArgsConstructor(onConstructor_ = @Inject)
 public class CommandServiceImpl extends CommandServiceGrpc.CommandServiceImplBase {
+  private final SoulFireServer soulFire;
   private final ServerCommandManager serverCommandManager;
 
   @Override
   public void executeCommand(
     CommandRequest request, StreamObserver<CommandResponse> responseObserver) {
-    ServerRPCConstants.USER_CONTEXT_KEY.get().hasPermissionOrThrow(Permissions.COMMAND_EXECUTION);
+    var user = ServerRPCConstants.USER_CONTEXT_KEY.get();
+    var stack = switch (request.getScopeCase()) {
+      case GLOBAL -> {
+        user.hasPermissionOrThrow(PermissionContext.global(GlobalPermission.GLOBAL_COMMAND_EXECUTION));
+        yield CommandSourceStack.ofUnrestricted(soulFire, user);
+      }
+      case INSTANCE -> {
+        var instanceId = UUID.fromString(request.getInstance().getInstanceId());
+        user.hasPermissionOrThrow(PermissionContext.instance(InstancePermission.INSTANCE_COMMAND_EXECUTION, instanceId));
+
+        yield CommandSourceStack.ofInstance(soulFire, user, Set.of(instanceId));
+      }
+      case SCOPE_NOT_SET -> throw new IllegalArgumentException("Scope not set");
+    };
 
     try {
-      var code = serverCommandManager.execute(request.getCommand(), ServerRPCConstants.USER_CONTEXT_KEY.get());
+      var code = serverCommandManager.execute(request.getCommand(), stack);
 
       responseObserver.onNext(CommandResponse.newBuilder().setCode(code).build());
       responseObserver.onCompleted();
@@ -56,13 +71,38 @@ public class CommandServiceImpl extends CommandServiceGrpc.CommandServiceImplBas
   public void tabCompleteCommand(
     CommandCompletionRequest request,
     StreamObserver<CommandCompletionResponse> responseObserver) {
-    ServerRPCConstants.USER_CONTEXT_KEY.get().hasPermissionOrThrow(Permissions.COMMAND_COMPLETION);
+    var user = ServerRPCConstants.USER_CONTEXT_KEY.get();
+    var stack = switch (request.getScopeCase()) {
+      case GLOBAL -> {
+        user.hasPermissionOrThrow(PermissionContext.global(GlobalPermission.GLOBAL_COMMAND_COMPLETION));
+        yield CommandSourceStack.ofUnrestricted(soulFire, user);
+      }
+      case INSTANCE -> {
+        var instanceId = UUID.fromString(request.getInstance().getInstanceId());
+        user.hasPermissionOrThrow(PermissionContext.instance(InstancePermission.INSTANCE_COMMAND_COMPLETION, instanceId));
+
+        yield CommandSourceStack.ofInstance(soulFire, user, Set.of(instanceId));
+      }
+      case SCOPE_NOT_SET -> throw new IllegalArgumentException("Scope not set");
+    };
 
     try {
-      var suggestions = serverCommandManager.getCompletionSuggestions(request.getCommand(), ServerRPCConstants.USER_CONTEXT_KEY.get());
+      var suggestions = serverCommandManager.complete(request.getCommand(), request.getCursor(), stack)
+        .stream()
+        .map(completion -> {
+          var builder = CommandCompletion.newBuilder()
+            .setSuggestion(completion.suggestion());
+          if (completion.tooltip() != null) {
+            builder.setTooltip(completion.tooltip());
+          }
+          return builder.build();
+        })
+        .toList();
 
       responseObserver.onNext(
-        CommandCompletionResponse.newBuilder().addAllSuggestions(suggestions).build());
+        CommandCompletionResponse.newBuilder()
+          .addAllSuggestions(suggestions)
+          .build());
       responseObserver.onCompleted();
     } catch (Throwable t) {
       log.error("Error tab completing", t);

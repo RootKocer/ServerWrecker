@@ -25,17 +25,11 @@ import com.soulfiremc.server.pathfinding.SFVec3i;
 import com.soulfiremc.server.pathfinding.goals.PosGoal;
 import com.soulfiremc.server.pathfinding.graph.MinecraftGraph;
 import com.soulfiremc.server.pathfinding.graph.ProjectedInventory;
-import com.soulfiremc.server.pathfinding.graph.ProjectedLevel;
-import com.soulfiremc.server.protocol.bot.state.TagsState;
-import com.soulfiremc.test.utils.TestBlockAccessor;
-import com.soulfiremc.test.utils.TestLevelHeightAccessor;
-import com.soulfiremc.util.GsonInstance;
-import com.soulfiremc.util.ResourceHelper;
-import java.io.ByteArrayInputStream;
-import java.io.InputStreamReader;
-import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.zip.GZIPInputStream;
+import com.soulfiremc.server.util.SFHelpers;
+import com.soulfiremc.server.util.structs.DefaultTagsState;
+import com.soulfiremc.server.util.structs.GsonInstance;
+import com.soulfiremc.test.utils.TestBlockAccessorBuilder;
+import com.soulfiremc.test.utils.TestPathConstraint;
 import lombok.extern.slf4j.Slf4j;
 import net.kyori.adventure.key.Key;
 import org.intellij.lang.annotations.Subst;
@@ -43,6 +37,11 @@ import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
+
+import java.io.ByteArrayInputStream;
+import java.io.InputStreamReader;
+import java.util.List;
+import java.util.zip.GZIPInputStream;
 
 @Slf4j
 @State(Scope.Benchmark)
@@ -53,7 +52,7 @@ public class PathfindingBenchmark {
   @Setup
   public void setup() {
     var byteArrayInputStream =
-      new ByteArrayInputStream(ResourceHelper.getResourceAsBytes("world_data.json.zip"));
+      new ByteArrayInputStream(SFHelpers.getResourceAsBytes("world_data.json.zip"));
     try (var gzipInputStream = new GZIPInputStream(byteArrayInputStream);
          var reader = new InputStreamReader(gzipInputStream)) {
       log.info("Reading world data...");
@@ -69,38 +68,38 @@ public class PathfindingBenchmark {
 
       log.info("Parsing world data...");
 
-      var maxY = 0;
-      var accessor = new TestBlockAccessor();
+      log.info("X: {}, Y: {}, Z: {}", data.length, data[0].length, data[0][0].length);
+
+      // Find the first safe block at 0 0
+      var safeY = Integer.MIN_VALUE;
+      var accessor = new TestBlockAccessorBuilder();
       for (var x = 0; x < data.length; x++) {
-        var xArray = data[x];
-        for (var y = 0; y < xArray.length; y++) {
-          var yArray = xArray[y];
-          for (var z = 0; z < yArray.length; z++) {
-            accessor.setBlockAt(x, y, z, BlockType.REGISTRY.getByKey(blockDefinitions[yArray[z]]));
-            maxY = Math.max(maxY, y);
+        for (var y = 0; y < data[0].length; y++) {
+          for (var z = 0; z < data[0][0].length; z++) {
+            var blockType = BlockType.REGISTRY.getByKey(blockDefinitions[data[x][y][z]]);
+            if (blockType.air()) {
+              continue;
+            }
+
+            // Insert blocks
+            accessor.setBlockAt(x, y, z, blockType);
+            if (x == 0 && z == 0) {
+              safeY = Math.max(safeY, y + 1);
+            }
           }
         }
       }
 
-      log.info("Calculating world data...");
+      var builtAccessor = accessor.build();
 
-      // Find the first safe block at 0 0
-      var safeY = 0;
-      for (var y = maxY; y >= 0; y--) {
-        if (accessor.getBlockState(0, y, 0).blockType() != BlockType.AIR) {
-          safeY = y + 1;
-          break;
-        }
-      }
-
-      var inventory = new ProjectedInventory(List.of());
+      var inventory = ProjectedInventory.forUnitTest(List.of(), DefaultTagsState.TAGS_STATE, TestPathConstraint.INSTANCE);
       initialState = NodeState.forInfo(new SFVec3i(0, safeY, 0), inventory);
       log.info("Initial state: {}", initialState.blockPosition().formatXYZ());
 
-      routeFinder = new RouteFinder(new MinecraftGraph(new TagsState(),
-        new ProjectedLevel(TestLevelHeightAccessor.INSTANCE, accessor),
+      routeFinder = new RouteFinder(new MinecraftGraph(DefaultTagsState.TAGS_STATE,
+        builtAccessor,
         inventory,
-        true, true), new PosGoal(100, 80, 100));
+        TestPathConstraint.INSTANCE), new PosGoal(100, 80, 100));
 
       log.info("Done loading! Testing...");
     } catch (Exception e) {
@@ -110,6 +109,6 @@ public class PathfindingBenchmark {
 
   @Benchmark
   public void calculatePath() {
-    routeFinder.findRoute(initialState, true, new CompletableFuture<>());
+    routeFinder.findRouteSync(initialState);
   }
 }

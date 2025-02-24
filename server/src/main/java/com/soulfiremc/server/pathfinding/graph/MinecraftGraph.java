@@ -19,47 +19,51 @@ package com.soulfiremc.server.pathfinding.graph;
 
 import com.soulfiremc.server.data.BlockState;
 import com.soulfiremc.server.data.BlockType;
-import com.soulfiremc.server.data.FluidType;
-import com.soulfiremc.server.pathfinding.NodeState;
 import com.soulfiremc.server.pathfinding.SFVec3i;
-import com.soulfiremc.server.pathfinding.graph.actions.DownMovement;
-import com.soulfiremc.server.pathfinding.graph.actions.GraphAction;
-import com.soulfiremc.server.pathfinding.graph.actions.ParkourMovement;
-import com.soulfiremc.server.pathfinding.graph.actions.SimpleMovement;
-import com.soulfiremc.server.pathfinding.graph.actions.UpMovement;
+import com.soulfiremc.server.pathfinding.graph.actions.*;
+import com.soulfiremc.server.pathfinding.graph.actions.movement.ActionDirection;
+import com.soulfiremc.server.protocol.bot.block.BlockAccessor;
 import com.soulfiremc.server.protocol.bot.state.TagsState;
-import com.soulfiremc.server.util.BlockTypeHelper;
-import com.soulfiremc.server.util.LazyBoolean;
-import com.soulfiremc.server.util.Vec2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.objects.Object2ObjectFunction;
-import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import it.unimi.dsi.fastutil.objects.ObjectList;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.BiConsumer;
-import java.util.function.Consumer;
-import java.util.function.Predicate;
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
+
+/**
+ * Minecraft world, but observed as a graph of actions between blocks.
+ * A node would be a block and the edges would be the actions that can be performed on that block.
+ * An action MUST lead to another block in the "graph".
+ * If you know graph theory this may sound familiar.
+ * All checks are predefined "subscriptions" of a block relative to the foot position of a bot.
+ * This way we can most efficiently calculate the actions that can be performed on a blocks by immediately running multiple actions per block.
+ * Traditionally an action would dynamically check if it is possible and a block would be considered multiple times across multiple actions.
+ * However, with subscriptions multiple actions can "opt-in" to a block and perform their checks on a block a single time.
+ *
+ * @param tagsState      The tags state of the bot
+ * @param blockAccessor  The block accessor
+ * @param inventory      The inventory of the bot
+ * @param pathConstraint The path constraint
+ */
 @Slf4j
 public record MinecraftGraph(TagsState tagsState,
-                             ProjectedLevel level, ProjectedInventory inventory,
-                             Predicate<SFVec3i> canBreakBlockPredicate,
-                             Predicate<SFVec3i> canPlaceBlockPredicate) {
-  private static final Object2ObjectFunction<
-    ? super SFVec3i, ? extends ObjectList<WrappedActionSubscription>>
-    CREATE_MISSING_FUNCTION = k -> new ObjectArrayList<>();
+                             BlockAccessor blockAccessor,
+                             ProjectedInventory inventory,
+                             PathConstraint pathConstraint) {
+  public static final int ACTIONS_SIZE;
   private static final GraphAction[] ACTIONS_TEMPLATE;
   private static final SFVec3i[] SUBSCRIPTION_KEYS;
   private static final WrappedActionSubscription[][] SUBSCRIPTION_VALUES;
-  private static final boolean ALLOW_BREAKING_UNDIGGABLE = Boolean.getBoolean("sf.pathfinding-allow-breaking-undiggable");
 
   static {
-    var blockSubscribers = new Vec2ObjectOpenHashMap<SFVec3i, ObjectList<WrappedActionSubscription>>();
-    var actions = new ObjectArrayList<GraphAction>();
+    var blockSubscribers = new Object2ObjectOpenHashMap<SFVec3i, List<WrappedActionSubscription>>();
+    var actions = new ArrayList<GraphAction>();
     var currentSubscriptions = new AtomicInteger(0);
-    BiConsumer<SFVec3i, MovementSubscription<?>> blockSubscribersConsumer = (key, value) -> {
+    SubscriptionConsumer blockSubscribersConsumer = (key, value) -> {
       currentSubscriptions.incrementAndGet();
-      blockSubscribers.computeIfAbsent(key, CREATE_MISSING_FUNCTION).add(new WrappedActionSubscription(actions.size(), value));
+      blockSubscribers.computeIfAbsent(key, k -> new ArrayList<>()).add(new WrappedActionSubscription(actions.size(), value));
     };
     Consumer<GraphAction> actionAdder = action -> {
       actions.add(action);
@@ -72,6 +76,7 @@ public record MinecraftGraph(TagsState tagsState,
     UpMovement.registerUpMovements(actionAdder, blockSubscribersConsumer);
 
     ACTIONS_TEMPLATE = actions.toArray(new GraphAction[0]);
+    ACTIONS_SIZE = ACTIONS_TEMPLATE.length;
     SUBSCRIPTION_KEYS = new SFVec3i[blockSubscribers.size()];
     SUBSCRIPTION_VALUES = new WrappedActionSubscription[blockSubscribers.size()][];
 
@@ -86,50 +91,35 @@ public record MinecraftGraph(TagsState tagsState,
     }
   }
 
-  public MinecraftGraph(TagsState tagsState,
-                        ProjectedLevel level, ProjectedInventory inventory,
-                        boolean canBreakBlocks, boolean canPlaceBlocks) {
-    this(tagsState, level, inventory, v -> canBreakBlocks, v -> {
-      if (!canPlaceBlocks) {
-        return false;
-      }
-
-      return level.isPlaceable(v);
-    });
-  }
-
   public boolean doUsableBlocksDecreaseWhenPlaced() {
-    return !inventory.creativeModeBreak();
-  }
-
-  public static boolean isBlockFree(BlockState blockState) {
-    return blockState.blockShapeGroup().hasNoCollisions() && blockState.blockType().fluidType() == FluidType.EMPTY;
+    return pathConstraint.doUsableBlocksDecreaseWhenPlaced();
   }
 
   public boolean disallowedToPlaceBlock(SFVec3i position) {
-    return !canPlaceBlockPredicate.test(position);
+    return !pathConstraint.canPlaceBlockPos(position);
   }
 
   public boolean disallowedToBreakBlock(SFVec3i position) {
-    return !canBreakBlockPredicate.test(position);
+    return !pathConstraint.canBreakBlockPos(position);
   }
 
-  public boolean disallowedToBreakType(BlockType blockType) {
-    if (!ALLOW_BREAKING_UNDIGGABLE) {
-      return !BlockTypeHelper.isDiggable(blockType);
-    }
-
-    return false;
+  public boolean disallowedToBreakBlockType(BlockType blockType) {
+    return !pathConstraint.canBreakBlockType(blockType);
   }
 
-  public void insertActions(NodeState node, Consumer<GraphInstructions> callback) {
+  public void insertActions(SFVec3i node, ActionDirection fromDirection, Consumer<GraphInstructions> callback) {
     log.debug("Inserting actions for node: {}", node);
-    calculateActions(node, generateTemplateActions(), callback);
+    calculateActions(node, generateTemplateActions(fromDirection), callback);
   }
 
-  private GraphAction[] generateTemplateActions() {
+  private GraphAction[] generateTemplateActions(ActionDirection fromDirection) {
     var actions = new GraphAction[ACTIONS_TEMPLATE.length];
     for (var i = 0; i < ACTIONS_TEMPLATE.length; i++) {
+      var action = ACTIONS_TEMPLATE[i];
+      if (fromDirection != null && action.actionDirection.isOpposite(fromDirection)) {
+        continue;
+      }
+
       actions[i] = ACTIONS_TEMPLATE[i].copy();
     }
 
@@ -137,7 +127,7 @@ public record MinecraftGraph(TagsState tagsState,
   }
 
   private void calculateActions(
-    NodeState node,
+    SFVec3i node,
     GraphAction[] actions,
     Consumer<GraphInstructions> callback) {
     for (var i = 0; i < SUBSCRIPTION_KEYS.length; i++) {
@@ -146,7 +136,10 @@ public record MinecraftGraph(TagsState tagsState,
   }
 
   private void processSubscription(
-    NodeState node, GraphAction[] actions, Consumer<GraphInstructions> callback, int i) {
+    SFVec3i node,
+    GraphAction[] actions,
+    Consumer<GraphInstructions> callback,
+    int i) {
     var key = SUBSCRIPTION_KEYS[i];
     var value = SUBSCRIPTION_VALUES[i];
 
@@ -154,7 +147,6 @@ public record MinecraftGraph(TagsState tagsState,
     SFVec3i absolutePositionBlock = null;
 
     // We cache only this, but not solid because solid will only occur a single time
-    LazyBoolean isFree = null;
     for (var subscriber : value) {
       var action = actions[subscriber.actionIndex];
       if (action == null) {
@@ -163,27 +155,22 @@ public record MinecraftGraph(TagsState tagsState,
 
       if (blockState == null) {
         // Lazy calculation to avoid unnecessary calls
-        absolutePositionBlock = node.blockPosition().add(key);
-        blockState = level.getBlockState(absolutePositionBlock);
+        absolutePositionBlock = node.add(key);
+        blockState = blockAccessor.getBlockState(absolutePositionBlock);
 
-        if (blockState.blockType() == BlockType.VOID_AIR) {
+        if (pathConstraint.isOutOfLevel(blockState, absolutePositionBlock)) {
           throw new OutOfLevelException();
         }
       }
 
-      if (isFree == null) {
-        var finalBlockState = blockState;
-        isFree = new LazyBoolean(() -> isBlockFree(finalBlockState));
-      }
-
-      switch (subscriber.subscription.processBlockUnsafe(this, key, action, isFree, blockState, absolutePositionBlock)) {
+      switch (subscriber.subscription.processBlockUnsafe(this, key, action, blockState, absolutePositionBlock)) {
         case CONTINUE -> {
           if (!action.decrementAndIsDone()) {
             continue;
           }
 
           for (var instruction : action.getInstructions(this, node)) {
-            callback.accept(instruction);
+            callback.accept(pathConstraint.modifyAsNeeded(instruction));
           }
         }
         case IMPOSSIBLE -> actions[subscriber.actionIndex] = null;
@@ -201,21 +188,18 @@ public record MinecraftGraph(TagsState tagsState,
       MinecraftGraph graph,
       SFVec3i key,
       M action,
-      LazyBoolean isFree,
       BlockState blockState,
       SFVec3i absoluteKey);
 
+    @SuppressWarnings("unchecked")
     default SubscriptionSingleResult processBlockUnsafe(
       MinecraftGraph graph,
       SFVec3i key,
       GraphAction action,
-      LazyBoolean isFree,
       BlockState blockState,
       SFVec3i absolutePositionBlock) {
-      return processBlock(graph, key, castAction(action), isFree, blockState, absolutePositionBlock);
+      return processBlock(graph, key, (M) action, blockState, absolutePositionBlock);
     }
-
-    M castAction(GraphAction action);
   }
 
   private record WrappedActionSubscription(int actionIndex, MovementSubscription<?> subscription) {}

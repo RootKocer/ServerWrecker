@@ -19,22 +19,17 @@ package com.soulfiremc.server.pathfinding.graph.actions;
 
 import com.soulfiremc.server.data.BlockState;
 import com.soulfiremc.server.pathfinding.Costs;
-import com.soulfiremc.server.pathfinding.NodeState;
 import com.soulfiremc.server.pathfinding.SFVec3i;
 import com.soulfiremc.server.pathfinding.execution.GapJumpAction;
-import com.soulfiremc.server.pathfinding.graph.BlockFace;
 import com.soulfiremc.server.pathfinding.graph.GraphInstructions;
 import com.soulfiremc.server.pathfinding.graph.MinecraftGraph;
-import com.soulfiremc.server.pathfinding.graph.actions.movement.BlockSafetyData;
-import com.soulfiremc.server.pathfinding.graph.actions.movement.ParkourDirection;
-import com.soulfiremc.server.protocol.bot.BotActionManager;
-import com.soulfiremc.server.util.BlockTypeHelper;
-import com.soulfiremc.server.util.LazyBoolean;
-import it.unimi.dsi.fastutil.Pair;
-import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import com.soulfiremc.server.pathfinding.graph.actions.movement.ActionDirection;
+import com.soulfiremc.server.util.SFBlockHelpers;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+
 import java.util.Collections;
 import java.util.List;
-import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 public final class ParkourMovement extends GraphAction implements Cloneable {
@@ -42,87 +37,63 @@ public final class ParkourMovement extends GraphAction implements Cloneable {
   private final ParkourDirection direction;
   private final SFVec3i targetFeetBlock;
 
-  public ParkourMovement(ParkourDirection direction) {
+  private ParkourMovement(ParkourDirection direction, SubscriptionConsumer blockSubscribers) {
+    super(direction.actionDirection);
     this.direction = direction;
     this.targetFeetBlock = direction.offset(direction.offset(FEET_POSITION_RELATIVE_BLOCK));
+
+    this.registerRequiredFreeBlocks(blockSubscribers);
+    this.registerRequiredUnsafeBlock(blockSubscribers);
+    this.registerRequiredSolidBlock(blockSubscribers);
   }
 
-  public static void registerParkourMovements(
-    Consumer<GraphAction> callback,
-    BiConsumer<SFVec3i, MinecraftGraph.MovementSubscription<?>> blockSubscribers) {
+  public static void registerParkourMovements(Consumer<GraphAction> callback, SubscriptionConsumer blockSubscribers) {
     for (var direction : ParkourDirection.VALUES) {
-      callback.accept(
-        ParkourMovement.registerParkourMovement(
-          blockSubscribers, new ParkourMovement(direction)));
+      callback.accept(new ParkourMovement(direction, blockSubscribers));
     }
   }
 
-  private static ParkourMovement registerParkourMovement(
-    BiConsumer<SFVec3i, MinecraftGraph.MovementSubscription<?>> blockSubscribers,
-    ParkourMovement movement) {
-    {
-      var blockId = 0;
-      for (var freeBlock : movement.listRequiredFreeBlocks()) {
-        blockSubscribers
-          .accept(freeBlock.key(), new ParkourMovementBlockSubscription(ParkourMovementBlockSubscription.SubscriptionType.MOVEMENT_FREE, blockId++, freeBlock.value()));
-      }
-    }
-
-    {
-      blockSubscribers
-        .accept(movement.requiredUnsafeBlock(), new ParkourMovementBlockSubscription(ParkourMovementBlockSubscription.SubscriptionType.PARKOUR_UNSAFE_TO_STAND_ON));
-    }
-
-    {
-      blockSubscribers
-        .accept(movement.requiredSolidBlock(), new ParkourMovementBlockSubscription(ParkourMovementBlockSubscription.SubscriptionType.MOVEMENT_SOLID));
-    }
-
-    return movement;
-  }
-
-  public List<Pair<SFVec3i, BlockFace>> listRequiredFreeBlocks() {
-    var requiredFreeBlocks = new ObjectArrayList<Pair<SFVec3i, BlockFace>>();
-
+  private void registerRequiredFreeBlocks(SubscriptionConsumer blockSubscribers) {
     // Make block above the head block free for jump
-    requiredFreeBlocks.add(Pair.of(FEET_POSITION_RELATIVE_BLOCK.add(0, 2, 0), BlockFace.BOTTOM));
+    blockSubscribers.subscribe(FEET_POSITION_RELATIVE_BLOCK.add(0, 2, 0), MovementFreeSubscription.INSTANCE);
 
     var oneFurther = direction.offset(FEET_POSITION_RELATIVE_BLOCK);
-    var blockDigDirection = direction.toSkyDirection().opposite().toBlockFace();
 
     // Room for jumping
-    requiredFreeBlocks.add(Pair.of(oneFurther, blockDigDirection));
-    requiredFreeBlocks.add(Pair.of(oneFurther.add(0, 1, 0), blockDigDirection));
-    requiredFreeBlocks.add(Pair.of(oneFurther.add(0, 2, 0), blockDigDirection));
+    blockSubscribers.subscribe(oneFurther, MovementFreeSubscription.INSTANCE);
+    blockSubscribers.subscribe(oneFurther.add(0, 1, 0), MovementFreeSubscription.INSTANCE);
+    blockSubscribers.subscribe(oneFurther.add(0, 2, 0), MovementFreeSubscription.INSTANCE);
 
     var twoFurther = direction.offset(oneFurther);
 
     // Room for jumping
-    requiredFreeBlocks.add(Pair.of(twoFurther, blockDigDirection));
-    requiredFreeBlocks.add(Pair.of(twoFurther.add(0, 1, 0), blockDigDirection));
-    requiredFreeBlocks.add(Pair.of(twoFurther.add(0, 2, 0), blockDigDirection));
-
-    return requiredFreeBlocks;
+    blockSubscribers.subscribe(twoFurther, MovementFreeSubscription.INSTANCE);
+    blockSubscribers.subscribe(twoFurther.add(0, 1, 0), MovementFreeSubscription.INSTANCE);
+    blockSubscribers.subscribe(twoFurther.add(0, 2, 0), MovementFreeSubscription.INSTANCE);
   }
 
-  public SFVec3i requiredUnsafeBlock() {
+  private void registerRequiredUnsafeBlock(SubscriptionConsumer blockSubscribers) {
     // The gap to jump over, needs to be unsafe for this movement to be possible
-    return direction.offset(FEET_POSITION_RELATIVE_BLOCK).sub(0, 1, 0);
+    blockSubscribers.subscribe(direction.offset(FEET_POSITION_RELATIVE_BLOCK).sub(0, 1, 0), ParkourUnsafeToStandOnSubscription.INSTANCE);
   }
 
-  public SFVec3i requiredSolidBlock() {
+  private void registerRequiredSolidBlock(SubscriptionConsumer blockSubscribers) {
     // Floor block
-    return targetFeetBlock.sub(0, 1, 0);
+    blockSubscribers.subscribe(targetFeetBlock.sub(0, 1, 0), MovementSolidSubscription.INSTANCE);
   }
 
   @Override
-  public List<GraphInstructions> getInstructions(MinecraftGraph graph, NodeState node) {
-    var absoluteTargetFeetBlock = node.blockPosition().add(targetFeetBlock);
+  public List<GraphInstructions> getInstructions(MinecraftGraph graph, SFVec3i node) {
+    var absoluteTargetFeetBlock = node.add(targetFeetBlock);
 
     return Collections.singletonList(new GraphInstructions(
-      new NodeState(absoluteTargetFeetBlock, node.usableBlockItems()),
+      absoluteTargetFeetBlock,
+      0,
+      false,
+      actionDirection,
       Costs.ONE_GAP_JUMP,
-      List.of(new GapJumpAction(absoluteTargetFeetBlock))));
+      List.of(new GapJumpAction(absoluteTargetFeetBlock))
+    ));
   }
 
   @Override
@@ -139,62 +110,69 @@ public final class ParkourMovement extends GraphAction implements Cloneable {
     }
   }
 
-  record ParkourMovementBlockSubscription(
-    SubscriptionType type,
-    int blockArrayIndex,
-    BlockFace blockBreakSideHint,
-    BotActionManager.BlockPlaceAgainstData blockToPlaceAgainst,
-    BlockSafetyData.BlockSafetyType safetyType) implements MinecraftGraph.MovementSubscription<ParkourMovement> {
-    ParkourMovementBlockSubscription(SubscriptionType type) {
-      this(type, -1, null, null, null);
-    }
+  @Getter
+  @RequiredArgsConstructor
+  public enum ParkourDirection {
+    NORTH(new SFVec3i(0, 0, -1), ActionDirection.NORTH),
+    SOUTH(new SFVec3i(0, 0, 1), ActionDirection.SOUTH),
+    EAST(new SFVec3i(1, 0, 0), ActionDirection.EAST),
+    WEST(new SFVec3i(-1, 0, 0), ActionDirection.WEST);
 
-    ParkourMovementBlockSubscription(SubscriptionType type, int blockArrayIndex, BlockFace blockBreakSideHint) {
-      this(type, blockArrayIndex, blockBreakSideHint, null, null);
+    public static final ParkourDirection[] VALUES = values();
+    private final SFVec3i offsetVector;
+    private final ActionDirection actionDirection;
+
+    public SFVec3i offset(SFVec3i vector) {
+      return vector.add(offsetVector);
     }
+  }
+
+  private interface ParkourMovementSubscription extends MinecraftGraph.MovementSubscription<ParkourMovement> {
+  }
+
+  private record MovementFreeSubscription() implements ParkourMovementSubscription {
+    private static final MovementFreeSubscription INSTANCE = new MovementFreeSubscription();
 
     @Override
-    public MinecraftGraph.SubscriptionSingleResult processBlock(MinecraftGraph graph, SFVec3i key, ParkourMovement parkourMovement, LazyBoolean isFree,
+    public MinecraftGraph.SubscriptionSingleResult processBlock(MinecraftGraph graph, SFVec3i key, ParkourMovement parkourMovement,
                                                                 BlockState blockState, SFVec3i absoluteKey) {
+      if (SFBlockHelpers.isBlockFree(blockState)) {
+        return MinecraftGraph.SubscriptionSingleResult.CONTINUE;
+      }
 
-      return switch (type) {
-        case MOVEMENT_FREE -> {
-          if (isFree.get()) {
-            yield MinecraftGraph.SubscriptionSingleResult.CONTINUE;
-          }
-
-          yield MinecraftGraph.SubscriptionSingleResult.IMPOSSIBLE;
-        }
-        case PARKOUR_UNSAFE_TO_STAND_ON -> {
-          // We only want to jump over dangerous blocks/gaps
-          // So either a non-full-block like water or lava or magma
-          // since it hurts to stand on.
-          if (BlockTypeHelper.isSafeBlockToStandOn(blockState)) {
-            yield MinecraftGraph.SubscriptionSingleResult.IMPOSSIBLE;
-          }
-
-          yield MinecraftGraph.SubscriptionSingleResult.CONTINUE;
-        }
-        case MOVEMENT_SOLID -> {
-          // Block is safe to walk on, no need to check for more
-          if (BlockTypeHelper.isSafeBlockToStandOn(blockState)) {
-            yield MinecraftGraph.SubscriptionSingleResult.CONTINUE;
-          }
-
-          yield MinecraftGraph.SubscriptionSingleResult.IMPOSSIBLE;
-        }
-      };
+      return MinecraftGraph.SubscriptionSingleResult.IMPOSSIBLE;
     }
+  }
+
+  private record ParkourUnsafeToStandOnSubscription() implements ParkourMovementSubscription {
+    private static final ParkourUnsafeToStandOnSubscription INSTANCE = new ParkourUnsafeToStandOnSubscription();
 
     @Override
-    public ParkourMovement castAction(GraphAction action) {
-      return (ParkourMovement) action;
-    }
+    public MinecraftGraph.SubscriptionSingleResult processBlock(MinecraftGraph graph, SFVec3i key, ParkourMovement parkourMovement,
+                                                                BlockState blockState, SFVec3i absoluteKey) {
+      // We only want to jump over dangerous blocks/gaps
+      // So either a non-full-block like water or lava or magma
+      // since it hurts to stand on.
+      if (SFBlockHelpers.isSafeBlockToStandOn(blockState)) {
+        return MinecraftGraph.SubscriptionSingleResult.IMPOSSIBLE;
+      }
 
-    enum SubscriptionType {
-      MOVEMENT_FREE,
-      PARKOUR_UNSAFE_TO_STAND_ON,
-      MOVEMENT_SOLID
+      return MinecraftGraph.SubscriptionSingleResult.CONTINUE;
+    }
+  }
+
+  private record MovementSolidSubscription() implements ParkourMovementSubscription {
+    private static final MovementSolidSubscription INSTANCE = new MovementSolidSubscription();
+
+    @Override
+    public MinecraftGraph.SubscriptionSingleResult processBlock(MinecraftGraph graph, SFVec3i key, ParkourMovement parkourMovement,
+                                                                BlockState blockState, SFVec3i absoluteKey) {
+      // Block is safe to walk on, no need to check for more
+      if (SFBlockHelpers.isSafeBlockToStandOn(blockState)) {
+        return MinecraftGraph.SubscriptionSingleResult.CONTINUE;
+      }
+
+      return MinecraftGraph.SubscriptionSingleResult.IMPOSSIBLE;
     }
   }
 }

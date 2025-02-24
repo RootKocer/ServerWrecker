@@ -15,22 +15,33 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-package com.soulfiremc.data;
+package com.soulfiremc.server.data;
 
 import net.kyori.adventure.key.Key;
+
+import java.util.List;
 
 @SuppressWarnings("unused")
 public record EntityType(
   int id,
   Key key,
-  float width,
-  float height,
+  EntityDimensions dimensions,
   int updateInterval,
   int clientTrackingRange,
   String category,
   boolean friendly,
   boolean summonable,
-  boolean attackable) implements RegistryValue<EntityType> {
+  boolean fireImmune,
+  boolean attackable,
+  double defaultFollowRange,
+  boolean playerEntity,
+  boolean livingEntity,
+  boolean boatEntity,
+  boolean minecartEntity,
+  boolean windChargeEntity,
+  boolean shulkerEntity,
+  List<String> inheritedClasses,
+  String defaultEntityMetadata) implements RegistryValue<EntityType> {
   public static final Registry<EntityType> REGISTRY = new Registry<>(RegistryKeys.ENTITY_TYPE);
 
   //@formatter:off
@@ -58,5 +69,10 @@ public record EntityType(
   @Override
   public int hashCode() {
     return id;
+  }
+
+  @Override
+  public Registry<EntityType> registry() {
+    return REGISTRY;
   }
 }

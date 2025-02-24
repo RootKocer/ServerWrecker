@@ -19,17 +19,27 @@ package com.soulfiremc.server.protocol.bot.state.entity;
 
 import com.soulfiremc.server.data.EntityType;
 import com.soulfiremc.server.protocol.bot.state.Level;
-import java.util.UUID;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
+import org.cloudburstmc.math.vector.Vector3i;
 
 @Getter
 @EqualsAndHashCode(callSuper = true)
 public class ExperienceOrbEntity extends Entity {
   private final int expValue;
 
-  public ExperienceOrbEntity(int entityId, int expValue, Level level, double x, double y, double z) {
-    super(entityId, UUID.randomUUID(), EntityType.EXPERIENCE_ORB, level, x, y, z, 0, 0, 0, 0, 0, 0);
+  public ExperienceOrbEntity(Level level, int expValue) {
+    super(EntityType.EXPERIENCE_ORB, level);
     this.expValue = expValue;
+  }
+
+  @Override
+  public Vector3i getBlockPosBelowThatAffectsMyMovement() {
+    return this.getOnPos(0.999999F);
+  }
+
+  @Override
+  protected double getDefaultGravity() {
+    return 0.03;
   }
 }

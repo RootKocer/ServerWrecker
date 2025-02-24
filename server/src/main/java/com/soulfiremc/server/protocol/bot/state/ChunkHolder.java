@@ -22,17 +22,16 @@ import com.soulfiremc.server.data.BlockType;
 import com.soulfiremc.server.protocol.bot.block.BlockAccessor;
 import com.soulfiremc.server.protocol.bot.block.GlobalBlockPalette;
 import com.soulfiremc.server.protocol.bot.model.ChunkKey;
-import com.soulfiremc.server.protocol.bot.utils.SectionUtils;
-import com.soulfiremc.server.util.NoopLock;
+import com.soulfiremc.server.util.SectionUtils;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
+import org.cloudburstmc.math.vector.Vector3i;
+
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import org.cloudburstmc.math.vector.Vector3i;
 
 public class ChunkHolder implements BlockAccessor {
-  private static final BlockState AIR_BLOCK_STATE = BlockState.forDefaultBlockType(BlockType.AIR);
   private static final BlockState VOID_AIR_BLOCK_STATE = BlockState.forDefaultBlockType(BlockType.VOID_AIR);
   private final Long2ObjectOpenHashMap<ChunkData> chunks = new Long2ObjectOpenHashMap<>();
   private final Lock readLock;
@@ -48,8 +47,8 @@ public class ChunkHolder implements BlockAccessor {
 
   private ChunkHolder(ChunkHolder chunkHolder) {
     this.chunks.putAll(chunkHolder.chunks);
-    this.readLock = new NoopLock();
-    this.writeLock = new NoopLock();
+    this.readLock = null;
+    this.writeLock = null;
     this.levelHeightAccessor = chunkHolder.levelHeightAccessor;
   }
 
@@ -63,51 +62,87 @@ public class ChunkHolder implements BlockAccessor {
   }
 
   private ChunkData getChunkFromSection(long sectionIndex) {
-    readLock.lock();
+    if (readLock != null) {
+      readLock.lock();
+    }
+
     try {
       return chunks.get(sectionIndex);
     } finally {
-      readLock.unlock();
+      if (readLock != null) {
+        readLock.unlock();
+      }
     }
   }
 
-  public boolean isChunkLoaded(int x, int z) {
-    readLock.lock();
+  public boolean isChunkSectionLoaded(int sectionX, int sectionZ) {
+    if (readLock != null) {
+      readLock.lock();
+    }
+
     try {
-      return chunks.containsKey(ChunkKey.calculateKey(x, z));
+      return chunks.containsKey(ChunkKey.calculateKey(sectionX, sectionZ));
     } finally {
-      readLock.unlock();
+      if (readLock != null) {
+        readLock.unlock();
+      }
     }
   }
 
-  public boolean isChunkLoaded(Vector3i block) {
-    return isChunkLoaded(
-      SectionUtils.blockToSection(block.getX()), SectionUtils.blockToSection(block.getZ()));
+  public boolean isChunkPositionLoaded(int blockX, int blockZ) {
+    return isChunkSectionLoaded(SectionUtils.blockToSection(blockX), SectionUtils.blockToSection(blockZ));
   }
 
-  public void removeChunk(int x, int z) {
-    writeLock.lock();
+  public void removeChunkSection(int sectionX, int sectionZ) {
+    if (writeLock != null) {
+      writeLock.lock();
+    }
+
     try {
-      chunks.remove(ChunkKey.calculateKey(x, z));
+      chunks.remove(ChunkKey.calculateKey(sectionX, sectionZ));
     } finally {
-      writeLock.unlock();
+      if (writeLock != null) {
+        writeLock.unlock();
+      }
     }
   }
 
-  public ChunkData getOrCreateChunk(int x, int z) {
-    writeLock.lock();
+  public boolean hasChunksAt(int fromBlockX, int fromBlockZ, int toBlockX, int toBlockZ) {
+    var fromSectionX = SectionUtils.blockToSection(fromBlockX);
+    var toSectionX = SectionUtils.blockToSection(toBlockX);
+    var fromSectionZ = SectionUtils.blockToSection(fromBlockZ);
+    var toSectionZ = SectionUtils.blockToSection(toBlockZ);
+
+    for (var sectionX = fromSectionX; sectionX <= toSectionX; sectionX++) {
+      for (var sectionZ = fromSectionZ; sectionZ <= toSectionZ; sectionZ++) {
+        if (!this.isChunkSectionLoaded(sectionX, sectionZ)) {
+          return false;
+        }
+      }
+    }
+
+    return true;
+  }
+
+  public ChunkData getOrCreateChunkSection(int sectionX, int sectionZ) {
+    if (writeLock != null) {
+      writeLock.lock();
+    }
+
     try {
       return chunks.computeIfAbsent(
-        ChunkKey.calculateKey(x, z), (key) -> new ChunkData(levelHeightAccessor, false));
+        ChunkKey.calculateKey(sectionX, sectionZ), (key) -> new ChunkData(levelHeightAccessor));
     } finally {
-      writeLock.unlock();
+      if (writeLock != null) {
+        writeLock.unlock();
+      }
     }
   }
 
   @Override
   public BlockState getBlockState(int x, int y, int z) {
     if (levelHeightAccessor.isOutsideBuildHeight(y)) {
-      return AIR_BLOCK_STATE;
+      return VOID_AIR_BLOCK_STATE;
     }
 
     var chunkData = getChunk(SectionUtils.blockToSection(x), SectionUtils.blockToSection(z));

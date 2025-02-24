@@ -20,26 +20,27 @@ package com.soulfiremc.client.settings;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Multimaps;
 import com.google.gson.JsonElement;
-import com.soulfiremc.grpc.generated.AttackStartRequest;
-import com.soulfiremc.grpc.generated.SettingsEntry;
-import com.soulfiremc.grpc.generated.SettingsNamespace;
-import com.soulfiremc.settings.ProfileDataStructure;
-import com.soulfiremc.settings.PropertyKey;
-import com.soulfiremc.settings.account.MinecraftAccount;
-import com.soulfiremc.settings.proxy.SFProxy;
-import com.soulfiremc.util.EnabledWrapper;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.function.Consumer;
+import com.soulfiremc.client.cli.SFCommandDefinition;
+import com.soulfiremc.client.grpc.RPCClient;
+import com.soulfiremc.grpc.generated.AccountTypeCredentials;
+import com.soulfiremc.grpc.generated.CredentialsAuthRequest;
+import com.soulfiremc.grpc.generated.CredentialsAuthResponse;
+import com.soulfiremc.grpc.generated.InstanceConfig;
+import com.soulfiremc.server.account.AuthType;
+import com.soulfiremc.server.account.MinecraftAccount;
+import com.soulfiremc.server.settings.lib.InstanceSettingsImpl;
+import com.soulfiremc.server.util.SFHelpers;
+import lombok.RequiredArgsConstructor;
+import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
+
 import javax.inject.Inject;
 import javax.inject.Provider;
-import lombok.Getter;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.util.*;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
 
 @Slf4j
 @RequiredArgsConstructor(onConstructor_ = @Inject)
@@ -47,10 +48,10 @@ public class ClientSettingsManager {
   private final Multimap<PropertyKey, Consumer<JsonElement>> listeners =
     Multimaps.newListMultimap(new LinkedHashMap<>(), ArrayList::new);
   private final Map<String, Map<String, Provider<JsonElement>>> providers = new LinkedHashMap<>();
-  @Getter
-  private final AccountRegistry accountRegistry;
-  @Getter
-  private final ProxyRegistry proxyRegistry = new ProxyRegistry();
+  private final RPCClient rpcClient;
+  @Setter
+  private SFCommandDefinition commandDefinition;
+  private InstanceSettingsImpl settingsSource = InstanceSettingsImpl.EMPTY;
 
   public void registerProvider(PropertyKey property, Provider<JsonElement> provider) {
     providers
@@ -62,116 +63,112 @@ public class ClientSettingsManager {
     listeners.put(property, listener);
   }
 
-  public void loadProfile(Path path) throws IOException {
-    var profileDataStructure = ProfileDataStructure.deserialize(Files.readString(path));
-    profileDataStructure.handleProperties(
-      (propertyKey, jsonElement) -> {
-        for (var listener : listeners.get(propertyKey)) {
-          listener.accept(jsonElement);
-        }
-      });
-
-    accountRegistry.setAccounts(profileDataStructure.accounts());
-    accountRegistry.callLoadHooks();
-
-    proxyRegistry.setProxies(profileDataStructure.proxies());
-    proxyRegistry.callLoadHooks();
-  }
-
-  public void saveProfile(Path path) throws IOException {
-    Files.createDirectories(path.getParent());
-
-    Files.writeString(path, exportSettings());
-  }
-
-  public String exportSettings() {
-    var settingsData = new LinkedHashMap<String, Map<String, JsonElement>>();
-    for (var namespaceEntry : providers.entrySet()) {
-      for (var entry : namespaceEntry.getValue().entrySet()) {
-        var namespace = namespaceEntry.getKey();
-        var key = entry.getKey();
-        var value = entry.getValue().get();
-
-        settingsData.computeIfAbsent(namespace, k -> new LinkedHashMap<>()).put(key, value);
+  public InstanceConfig exportSettingsProto(UUID instanceId) {
+    // Load accounts
+    if (commandDefinition.accountFile() != null && commandDefinition.authType() != null) {
+      try {
+        loadFromString(instanceId, Files.readString(commandDefinition.accountFile()), commandDefinition.authType());
+      } catch (IOException e) {
+        log.error("Failed to load accounts!", e);
+        throw new RuntimeException(e);
       }
     }
 
-    return new ProfileDataStructure(
-      settingsData,
-      accountRegistry.accounts().stream().toList(),
-      proxyRegistry.proxies().stream().toList())
-      .serialize();
-  }
-
-  public AttackStartRequest exportSettingsProto() {
-    var namespaces = new ArrayList<SettingsNamespace>();
-
-    for (var namespaceEntry : providers.entrySet()) {
-      var namespace = namespaceEntry.getKey();
-      var namespaceSettings = new ArrayList<SettingsEntry>();
-
-      for (var entry : namespaceEntry.getValue().entrySet()) {
-        var key = entry.getKey();
-        var value = entry.getValue().get();
-
-        if (!value.isJsonPrimitive()) {
-          log.warn("Skipping non-primitive setting: {}#{}", namespace, key);
-          continue;
-        }
-
-        var primitive = value.getAsJsonPrimitive();
-        if (primitive.isBoolean()) {
-          namespaceSettings.add(
-            SettingsEntry.newBuilder()
-              .setKey(key)
-              .setBoolValue(primitive.getAsBoolean())
-              .build());
-        } else if (primitive.isNumber()) {
-          var number = primitive.getAsNumber();
-          if (number instanceof Integer) {
-            namespaceSettings.add(
-              SettingsEntry.newBuilder().setKey(key).setIntValue(number.intValue()).build());
-          } else if (number instanceof Double) {
-            namespaceSettings.add(
-              SettingsEntry.newBuilder()
-                .setKey(key)
-                .setDoubleValue(number.doubleValue())
-                .build());
-          } else {
-            log.warn("Skipping unsupported number setting: {}#{}", namespace, key);
-          }
-        } else if (primitive.isString()) {
-          namespaceSettings.add(
-            SettingsEntry.newBuilder()
-              .setKey(key)
-              .setStringValue(primitive.getAsString())
-              .build());
-        } else {
-          log.warn("Skipping unsupported primitive setting: {}#{}", namespace, key);
-        }
+    // Load proxies
+    if (commandDefinition.proxyFile() != null) {
+      try {
+        loadFromString(
+          Files.readString(commandDefinition.proxyFile()),
+          commandDefinition.proxyType() == null ? ProxyParser.uriParser() : ProxyParser.typeParser(commandDefinition.proxyType()));
+      } catch (IOException e) {
+        log.error("Failed to load proxies!", e);
+        throw new RuntimeException(e);
       }
-
-      namespaces.add(
-        SettingsNamespace.newBuilder()
-          .setNamespace(namespace)
-          .addAllEntries(namespaceSettings)
-          .build());
     }
 
-    return AttackStartRequest.newBuilder()
-      .addAllSettings(namespaces)
-      .addAllAccounts(
-        accountRegistry.accounts().stream()
-          .filter(EnabledWrapper::enabled)
-          .map(EnabledWrapper::value)
-          .map(MinecraftAccount::toProto)
-          .toList())
-      .addAllProxies(
-        proxyRegistry.proxies().stream()
-          .filter(EnabledWrapper::enabled)
-          .map(EnabledWrapper::value)
-          .map(SFProxy::toProto)
-          .toList())
-      .build();
+    // Load settings
+    gatherProviders();
+    return settingsSource.toProto();
+  }
+
+  private void gatherProviders() {
+    var settings = new HashMap<String, Map<String, JsonElement>>();
+    providers.forEach((namespace, properties) -> {
+      var namespaceMap = new HashMap<String, JsonElement>();
+      properties.forEach((key, provider) ->
+        namespaceMap.put(key, provider.get()));
+
+      settings.put(namespace, namespaceMap);
+    });
+
+    settingsSource = settingsSource.withSettings(settings);
+  }
+
+  private void loadFromString(String data, ProxyParser proxyParser) {
+    try {
+      var newProxies =
+        data.lines()
+          .map(String::strip)
+          .filter(Predicate.not(String::isBlank))
+          .distinct()
+          .map(proxyParser::parse)
+          .toList();
+
+      if (newProxies.isEmpty()) {
+        log.warn("No proxies found in the provided data!");
+        return;
+      }
+
+      settingsSource = settingsSource.withProxies(newProxies);
+
+      log.info("Loaded {} proxies!", newProxies.size());
+    } catch (Exception e) {
+      log.error("Failed to load proxies from string!", e);
+    }
+  }
+
+  private void loadFromString(UUID instanceId, String data, AuthType authType) {
+    try {
+      var newAccounts =
+        fromStringList(instanceId, data.lines()
+          .map(String::strip)
+          .filter(Predicate.not(String::isBlank))
+          .distinct()
+          .toList(), authType);
+
+      if (newAccounts.isEmpty()) {
+        log.warn("No accounts found in the provided data!");
+        return;
+      }
+
+      settingsSource = settingsSource.withAccounts(newAccounts);
+
+      log.info("Loaded {} accounts!", newAccounts.size());
+    } catch (Exception e) {
+      log.error("Failed to load accounts from string!", e);
+    }
+  }
+
+  private List<MinecraftAccount> fromStringList(UUID instanceId, List<String> accounts, AuthType authType) {
+    try {
+      var request =
+        CredentialsAuthRequest.newBuilder()
+          .setInstanceId(instanceId.toString())
+          .setService(AccountTypeCredentials.valueOf(authType.name()))
+          .addAllPayload(accounts);
+
+      return SFHelpers.awaitResultPredicate(
+          rpcClient.mcAuthServiceBlocking().loginCredentials(request.build()),
+          CredentialsAuthResponse::hasFullList)
+        .orElseThrow()
+        .getFullList()
+        .getAccountList()
+        .stream()
+        .map(MinecraftAccount::fromProto)
+        .toList();
+    } catch (Exception e) {
+      log.error("Failed to load account from string", e);
+      throw new RuntimeException(e);
+    }
   }
 }

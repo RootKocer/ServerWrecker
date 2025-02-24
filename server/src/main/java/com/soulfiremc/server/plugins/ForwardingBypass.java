@@ -17,54 +17,63 @@
  */
 package com.soulfiremc.server.plugins;
 
-import com.github.steveice10.mc.auth.data.GameProfile;
 import com.google.common.collect.ImmutableList;
-import com.soulfiremc.server.api.PluginHelper;
-import com.soulfiremc.server.api.SoulFireAPI;
+import com.soulfiremc.server.api.InternalPlugin;
+import com.soulfiremc.server.api.PluginInfo;
 import com.soulfiremc.server.api.event.bot.SFPacketReceiveEvent;
 import com.soulfiremc.server.api.event.bot.SFPacketSendingEvent;
-import com.soulfiremc.server.api.event.lifecycle.SettingsRegistryInitEvent;
+import com.soulfiremc.server.api.event.lifecycle.InstanceSettingsRegistryInitEvent;
 import com.soulfiremc.server.protocol.BotConnection;
 import com.soulfiremc.server.protocol.IdentifiedKey;
 import com.soulfiremc.server.settings.lib.SettingsObject;
-import com.soulfiremc.server.settings.property.ComboProperty;
-import com.soulfiremc.server.settings.property.Property;
-import com.soulfiremc.server.settings.property.StringProperty;
+import com.soulfiremc.server.settings.property.*;
 import com.soulfiremc.server.util.UUIDHelper;
 import com.soulfiremc.server.util.VelocityConstants;
-import com.soulfiremc.util.GsonInstance;
+import com.soulfiremc.server.util.structs.GsonInstance;
 import com.viaversion.viaversion.api.protocol.version.ProtocolVersion;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import net.lenni0451.lambdaevents.EventHandler;
+import org.geysermc.mcprotocollib.auth.GameProfile;
+import org.geysermc.mcprotocollib.protocol.codec.MinecraftTypes;
+import org.geysermc.mcprotocollib.protocol.packet.handshake.serverbound.ClientIntentionPacket;
+import org.geysermc.mcprotocollib.protocol.packet.login.clientbound.ClientboundCustomQueryPacket;
+import org.geysermc.mcprotocollib.protocol.packet.login.serverbound.ServerboundCustomQueryAnswerPacket;
+import org.pf4j.Extension;
+
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.UnaryOperator;
-import javax.crypto.Mac;
-import javax.crypto.spec.SecretKeySpec;
-import javax.inject.Inject;
-import lombok.AccessLevel;
-import lombok.NoArgsConstructor;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import net.lenni0451.lambdaevents.EventHandler;
-import org.geysermc.mcprotocollib.protocol.codec.MinecraftCodecHelper;
-import org.geysermc.mcprotocollib.protocol.packet.handshake.serverbound.ClientIntentionPacket;
-import org.geysermc.mcprotocollib.protocol.packet.login.clientbound.ClientboundCustomQueryPacket;
-import org.geysermc.mcprotocollib.protocol.packet.login.serverbound.ServerboundCustomQueryAnswerPacket;
 
 @Slf4j
-@RequiredArgsConstructor(onConstructor_ = @Inject)
-public class ForwardingBypass implements InternalPlugin {
+@Extension(ordinal = 2)
+public class ForwardingBypass extends InternalPlugin {
   private static final char LEGACY_FORWARDING_SEPARATOR = '\0';
 
-  public static void writePlayerKey(
-    ByteBuf buf, MinecraftCodecHelper codecHelper, IdentifiedKey playerKey) {
+  public ForwardingBypass() {
+    super(new PluginInfo(
+      "forwarding-bypass",
+      "1.0.0",
+      "Allows bypassing proxy forwarding",
+      "AlexProgrammerDE",
+      "GPL-3.0",
+      "https://soulfiremc.com"
+    ));
+  }
+
+  public static void writePlayerKey(ByteBuf buf, IdentifiedKey playerKey) {
     buf.writeLong(playerKey.expiryTemporal().toEpochMilli());
-    codecHelper.writeByteArray(buf, playerKey.getSignedPublicKey().getEncoded());
-    codecHelper.writeByteArray(buf, playerKey.getSignature());
+    MinecraftTypes.writeByteArray(buf, playerKey.getSignedPublicKey().getEncoded());
+    MinecraftTypes.writeByteArray(buf, playerKey.getSignature());
   }
 
   private static int findForwardingVersion(int requested, BotConnection player) {
@@ -102,11 +111,10 @@ public class ForwardingBypass implements InternalPlugin {
     try {
       var actualVersion = findForwardingVersion(requestedVersion, player);
 
-      var codecHelper = player.session().getCodecHelper();
-      codecHelper.writeVarInt(forwarded, actualVersion);
-      codecHelper.writeString(forwarded, address);
-      codecHelper.writeUUID(forwarded, player.accountProfileId());
-      codecHelper.writeString(forwarded, player.accountName());
+      MinecraftTypes.writeVarInt(forwarded, actualVersion);
+      MinecraftTypes.writeString(forwarded, address);
+      MinecraftTypes.writeUUID(forwarded, player.accountProfileId());
+      MinecraftTypes.writeString(forwarded, player.accountName());
 
       // This serves as additional redundancy. The key normally is stored in the
       // login start to the server, but some setups require this.
@@ -114,7 +122,7 @@ public class ForwardingBypass implements InternalPlugin {
         && actualVersion < VelocityConstants.MODERN_LAZY_SESSION) {
         var key = player.identifiedKey();
         assert key != null;
-        writePlayerKey(forwarded, codecHelper, key);
+        writePlayerKey(forwarded, key);
 
         // Provide the signer UUID since the UUID may differ from the
         // assigned UUID. Doing that breaks the signatures anyway but the server
@@ -122,7 +130,7 @@ public class ForwardingBypass implements InternalPlugin {
         if (actualVersion >= VelocityConstants.MODERN_FORWARDING_WITH_KEY_V2) {
           if (key.getSignatureHolder() != null) {
             forwarded.writeBoolean(true);
-            codecHelper.writeUUID(forwarded, key.getSignatureHolder());
+            MinecraftTypes.writeUUID(forwarded, key.getSignatureHolder());
           } else {
             // Should only not be provided if the player was connected
             // as offline-mode and the signer UUID was not backfilled
@@ -149,28 +157,26 @@ public class ForwardingBypass implements InternalPlugin {
   }
 
   @EventHandler
-  public static void onSettingsRegistryInit(SettingsRegistryInitEvent event) {
-    event.settingsRegistry().addClass(ForwardingBypassSettings.class, "Forwarding Bypass");
+  public void onSettingsRegistryInit(InstanceSettingsRegistryInitEvent event) {
+    event.settingsRegistry().addPluginPage(ForwardingBypassSettings.class, "Forwarding Bypass", this, "milestone", ForwardingBypassSettings.ENABLED);
   }
 
-  @Override
-  public void onLoad() {
-    SoulFireAPI.registerListeners(ForwardingBypass.class);
-    PluginHelper.registerBotEventConsumer(SFPacketSendingEvent.class, this::onPacket);
-    PluginHelper.registerBotEventConsumer(SFPacketReceiveEvent.class, this::onPacketReceive);
-  }
-
+  @EventHandler
   public void onPacket(SFPacketSendingEvent event) {
     if (!(event.packet() instanceof ClientIntentionPacket handshake)) {
       return;
     }
 
     var connection = event.connection();
-    var settingsHolder = connection.settingsHolder();
+    var settingsSource = connection.settingsSource();
     var hostname = handshake.getHostname();
     var uuid = connection.accountProfileId();
 
-    switch (settingsHolder.get(
+    if (!settingsSource.get(ForwardingBypassSettings.ENABLED)) {
+      return;
+    }
+
+    switch (settingsSource.get(
       ForwardingBypassSettings.FORWARDING_MODE, ForwardingBypassSettings.ForwardingMode.class)) {
       case LEGACY -> event.packet(
         handshake.withHostname(
@@ -181,10 +187,16 @@ public class ForwardingBypass implements InternalPlugin {
             uuid,
             getForwardedIp(),
             hostname,
-            settingsHolder.get(ForwardingBypassSettings.SECRET))));
+            settingsSource.get(ForwardingBypassSettings.SECRET))));
+      case SF_BYPASS -> event.packet(
+        handshake.withHostname(
+          createSoulFireBypassAddress(
+            hostname,
+            settingsSource.get(ForwardingBypassSettings.SECRET))));
     }
   }
 
+  @EventHandler
   public void onPacketReceive(SFPacketReceiveEvent event) {
     if (!(event.packet() instanceof ClientboundCustomQueryPacket loginPluginMessage)) {
       return;
@@ -195,8 +207,12 @@ public class ForwardingBypass implements InternalPlugin {
     }
 
     var connection = event.connection();
-    var settingsHolder = connection.settingsHolder();
-    if (settingsHolder.get(
+    var settingsSource = connection.settingsSource();
+    if (!settingsSource.get(ForwardingBypassSettings.ENABLED)) {
+      return;
+    }
+
+    if (settingsSource.get(
       ForwardingBypassSettings.FORWARDING_MODE, ForwardingBypassSettings.ForwardingMode.class)
       != ForwardingBypassSettings.ForwardingMode.MODERN) {
       log.warn("Received modern forwarding request packet, but forwarding mode is not modern!");
@@ -213,7 +229,7 @@ public class ForwardingBypass implements InternalPlugin {
 
     var forwardingData =
       createForwardingData(
-        settingsHolder.get(ForwardingBypassSettings.SECRET),
+        settingsSource.get(ForwardingBypassSettings.SECRET),
         getForwardedIp(),
         connection,
         requestedForwardingVersion);
@@ -268,31 +284,46 @@ public class ForwardingBypass implements InternalPlugin {
         ImmutableList.<GameProfile.Property>builder().addAll(properties).add(property).build());
   }
 
+  private String createSoulFireBypassAddress(String initialHostname, String forwardingSecret) {
+    return initialHostname + LEGACY_FORWARDING_SEPARATOR + "SF_%s".formatted(forwardingSecret);
+  }
+
   @NoArgsConstructor(access = AccessLevel.PRIVATE)
   private static class ForwardingBypassSettings implements SettingsObject {
-    private static final Property.Builder BUILDER = Property.builder("forwarding-bypass");
+    private static final String NAMESPACE = "forwarding-bypass";
+    public static final BooleanProperty ENABLED =
+      ImmutableBooleanProperty.builder()
+        .namespace(NAMESPACE)
+        .key("enabled")
+        .uiName("Enable forwarding bypass")
+        .description("Enable the forwarding bypass")
+        .defaultValue(false)
+        .build();
     public static final ComboProperty FORWARDING_MODE =
-      BUILDER.ofEnum(
-        "forwarding-mode",
-        "Forwarding mode",
-        new String[] {"--forwarding-mode"},
-        "What type of forwarding to use",
-        ForwardingMode.values(),
-        ForwardingMode.NONE);
+      ImmutableComboProperty.builder()
+        .namespace(NAMESPACE)
+        .key("forwarding-mode")
+        .uiName("Forwarding mode")
+        .description("What type of forwarding to use")
+        .defaultValue(ForwardingMode.LEGACY.name())
+        .addOptions(ComboProperty.optionsFromEnum(ForwardingMode.values(), ForwardingMode::toString))
+        .build();
     public static final StringProperty SECRET =
-      BUILDER.ofStringSecret(
-        "secret",
-        "Secret",
-        new String[] {"--secret"},
-        "Secret key used for forwarding. (Not needed for legacy mode)",
-        "forwarding secret");
+      ImmutableStringProperty.builder()
+        .namespace(NAMESPACE)
+        .key("secret")
+        .uiName("Secret")
+        .description("Secret key used for forwarding. (Not needed for legacy mode)")
+        .defaultValue("forwarding secret")
+        .secret(true)
+        .build();
 
     @RequiredArgsConstructor
     enum ForwardingMode {
-      NONE("None"),
       LEGACY("Legacy"),
       BUNGEE_GUARD("BungeeGuard"),
-      MODERN("Modern");
+      MODERN("Modern"),
+      SF_BYPASS("SoulFire Bypass");
 
       private final String displayName;
 

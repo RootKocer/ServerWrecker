@@ -17,33 +17,46 @@
  */
 package com.soulfiremc.server.plugins;
 
-import com.soulfiremc.server.api.PluginHelper;
-import com.soulfiremc.server.api.SoulFireAPI;
+import com.soulfiremc.server.api.InternalPlugin;
+import com.soulfiremc.server.api.PluginInfo;
 import com.soulfiremc.server.api.event.bot.BotJoinedEvent;
-import com.soulfiremc.server.api.event.lifecycle.SettingsRegistryInitEvent;
+import com.soulfiremc.server.api.event.lifecycle.InstanceSettingsRegistryInitEvent;
 import com.soulfiremc.server.data.ItemType;
+import com.soulfiremc.server.protocol.bot.ControllingTask;
 import com.soulfiremc.server.settings.lib.SettingsObject;
-import com.soulfiremc.server.settings.property.BooleanProperty;
-import com.soulfiremc.server.settings.property.MinMaxPropertyLink;
-import com.soulfiremc.server.settings.property.Property;
-import com.soulfiremc.server.util.TimeUtil;
-import java.util.concurrent.TimeUnit;
+import com.soulfiremc.server.settings.property.*;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import net.lenni0451.lambdaevents.EventHandler;
+import org.pf4j.Extension;
 
-public class AutoTotem implements InternalPlugin {
+import java.util.List;
+import java.util.concurrent.TimeUnit;
+
+@Extension
+public class AutoTotem extends InternalPlugin {
+  public AutoTotem() {
+    super(new PluginInfo(
+      "auto-totem",
+      "1.0.0",
+      "Automatically puts totems in the offhand slot",
+      "AlexProgrammerDE",
+      "GPL-3.0",
+      "https://soulfiremc.com"
+    ));
+  }
+
+  @EventHandler
   public static void onJoined(BotJoinedEvent event) {
     var connection = event.connection();
-    var settingsHolder = connection.settingsHolder();
-    if (!settingsHolder.get(AutoTotemSettings.ENABLED)) {
-      return;
-    }
-
-    connection.scheduler().scheduleWithRandomDelay(
+    var settingsSource = connection.settingsSource();
+    connection.scheduler().scheduleWithDynamicDelay(
       () -> {
-        var dataManager = connection.dataManager();
-        var inventoryManager = dataManager.inventoryManager();
+        if (!settingsSource.get(AutoTotemSettings.ENABLED)) {
+          return;
+        }
+
+        var inventoryManager = connection.inventoryManager();
         var playerInventory = inventoryManager.playerInventory();
         var offhandSlot = playerInventory.getOffhand();
 
@@ -59,69 +72,60 @@ public class AutoTotem implements InternalPlugin {
         }
 
         var slot = totemSlot.get();
-        if (!inventoryManager.tryInventoryControl()) {
+        if (inventoryManager.lookingAtForeignContainer()) {
           return;
         }
 
-        try {
-          inventoryManager.leftClickSlot(slot);
-          TimeUtil.waitTime(50, TimeUnit.MILLISECONDS);
-          inventoryManager.leftClickSlot(offhandSlot);
-          TimeUtil.waitTime(50, TimeUnit.MILLISECONDS);
-
-          if (inventoryManager.cursorItem() != null) {
-            inventoryManager.leftClickSlot(slot);
-            TimeUtil.waitTime(50, TimeUnit.MILLISECONDS);
-          }
-        } finally {
-          inventoryManager.unlockInventoryControl();
-        }
+        inventoryManager.connection().botControl().maybeRegister(ControllingTask.staged(List.of(
+          new ControllingTask.RunnableStage(inventoryManager::openPlayerInventory),
+          new ControllingTask.RunnableStage(() -> inventoryManager.leftClickSlot(slot)),
+          new ControllingTask.WaitDelayStage(() -> 50L),
+          new ControllingTask.RunnableStage(() -> inventoryManager.leftClickSlot(offhandSlot)),
+          new ControllingTask.WaitDelayStage(() -> 50L),
+          new ControllingTask.RunnableStage(() -> {
+            if (inventoryManager.cursorItem() != null) {
+              inventoryManager.leftClickSlot(slot);
+            }
+          }),
+          new ControllingTask.WaitDelayStage(() -> 50L),
+          new ControllingTask.RunnableStage(inventoryManager::closeInventory)
+        )));
       },
-      settingsHolder.get(AutoTotemSettings.DELAY.min()),
-      settingsHolder.get(AutoTotemSettings.DELAY.max()),
+      settingsSource.getRandom(AutoTotemSettings.DELAY).asLongSupplier(),
       TimeUnit.SECONDS);
   }
 
   @EventHandler
-  public static void onSettingsRegistryInit(SettingsRegistryInitEvent event) {
-    event.settingsRegistry().addClass(AutoTotemSettings.class, "Auto Totem");
-  }
-
-  @Override
-  public void onLoad() {
-    SoulFireAPI.registerListeners(AutoTotem.class);
-    PluginHelper.registerBotEventConsumer(BotJoinedEvent.class, AutoTotem::onJoined);
+  public void onSettingsRegistryInit(InstanceSettingsRegistryInitEvent event) {
+    event.settingsRegistry().addPluginPage(AutoTotemSettings.class, "Auto Totem", this, "cross", AutoTotemSettings.ENABLED);
   }
 
   @NoArgsConstructor(access = AccessLevel.PRIVATE)
   private static class AutoTotemSettings implements SettingsObject {
-    private static final Property.Builder BUILDER = Property.builder("auto-totem");
+    private static final String NAMESPACE = "auto-totem";
     public static final BooleanProperty ENABLED =
-      BUILDER.ofBoolean(
-        "enabled",
-        "Enable Auto Totem",
-        new String[] {"--auto-totem"},
-        "Always put available totems in the offhand slot",
-        true);
-    public static final MinMaxPropertyLink DELAY =
-      new MinMaxPropertyLink(
-        BUILDER.ofInt(
-          "min-delay",
-          "Min delay (seconds)",
-          new String[] {"--totem-min-delay"},
-          "Minimum delay between using totems",
-          1,
-          0,
-          Integer.MAX_VALUE,
-          1),
-        BUILDER.ofInt(
-          "max-delay",
-          "Max delay (seconds)",
-          new String[] {"--totem-max-delay"},
-          "Maximum delay between using totems",
-          2,
-          0,
-          Integer.MAX_VALUE,
-          1));
+      ImmutableBooleanProperty.builder()
+        .namespace(NAMESPACE)
+        .key("enabled")
+        .uiName("Enable Auto Totem")
+        .description("Always put available totems in the offhand slot")
+        .defaultValue(true)
+        .build();
+    public static final MinMaxProperty DELAY = ImmutableMinMaxProperty.builder()
+      .namespace(NAMESPACE)
+      .key("delay")
+      .minValue(0)
+      .maxValue(Integer.MAX_VALUE)
+      .minEntry(ImmutableMinMaxPropertyEntry.builder()
+        .uiName("Min delay (seconds)")
+        .description("Minimum delay between using totems")
+        .defaultValue(1)
+        .build())
+      .maxEntry(ImmutableMinMaxPropertyEntry.builder()
+        .uiName("Max delay (seconds)")
+        .description("Maximum delay between using totems")
+        .defaultValue(2)
+        .build())
+      .build();
   }
 }

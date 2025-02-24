@@ -18,75 +18,116 @@
 package com.soulfiremc.server.grpc;
 
 import com.google.common.base.Stopwatch;
-import com.soulfiremc.grpc.generated.ProxyCheckRequest;
-import com.soulfiremc.grpc.generated.ProxyCheckResponse;
-import com.soulfiremc.grpc.generated.ProxyCheckResponseSingle;
-import com.soulfiremc.grpc.generated.ProxyCheckServiceGrpc;
-import com.soulfiremc.server.user.Permissions;
-import com.soulfiremc.settings.proxy.SFProxy;
-import com.soulfiremc.util.ReactorHttpHelper;
+import com.soulfiremc.grpc.generated.*;
+import com.soulfiremc.server.SoulFireServer;
+import com.soulfiremc.server.proxy.SFProxy;
+import com.soulfiremc.server.settings.instance.ProxySettings;
+import com.soulfiremc.server.user.PermissionContext;
+import com.soulfiremc.server.util.ReactorHttpHelper;
+import com.soulfiremc.server.util.SFHelpers;
+import com.soulfiremc.server.util.structs.CancellationCollector;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
+import io.grpc.stub.ServerCallStreamObserver;
 import io.grpc.stub.StreamObserver;
 import io.netty.handler.codec.http.HttpStatusClass;
-import java.net.URL;
-import java.util.ArrayList;
-import java.util.concurrent.TimeUnit;
-import javax.inject.Inject;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Mono;
+
+import javax.inject.Inject;
+import java.net.URL;
+import java.time.Duration;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @RequiredArgsConstructor(onConstructor_ = @Inject)
 public class ProxyCheckServiceImpl extends ProxyCheckServiceGrpc.ProxyCheckServiceImplBase {
   private static final URL IPIFY_URL = ReactorHttpHelper.createURL("https://api.ipify.org");
   private static final URL AWS_URL = ReactorHttpHelper.createURL("https://checkip.amazonaws.com");
+  private final SoulFireServer soulFireServer;
 
   @Override
   public void check(
-    ProxyCheckRequest request, StreamObserver<ProxyCheckResponse> responseObserver) {
-    ServerRPCConstants.USER_CONTEXT_KEY.get().hasPermissionOrThrow(Permissions.CHECK_PROXY);
+    ProxyCheckRequest request, StreamObserver<ProxyCheckResponse> casted) {
+    var responseObserver = (ServerCallStreamObserver<ProxyCheckResponse>) casted;
+    var instanceId = UUID.fromString(request.getInstanceId());
+    ServerRPCConstants.USER_CONTEXT_KEY.get().hasPermissionOrThrow(PermissionContext.instance(InstancePermission.CHECK_PROXY, instanceId));
+    var optionalInstance = soulFireServer.getInstance(instanceId);
+    if (optionalInstance.isEmpty()) {
+      throw new StatusRuntimeException(Status.NOT_FOUND.withDescription("Instance '%s' not found".formatted(instanceId)));
+    }
 
+    var instance = optionalInstance.get();
+    var settings = instance.settingsSource();
+
+    var cancellationCollector = new CancellationCollector(responseObserver);
     try {
-      var url =
-        switch (request.getTarget()) {
-          case IPIFY -> IPIFY_URL;
-          case AWS -> AWS_URL;
-          case UNRECOGNIZED -> throw new IllegalArgumentException("Unrecognized target");
-        };
+      var url = switch (settings.get(ProxySettings.PROXY_CHECK_SERVICE, ProxySettings.ProxyCheckService.class)) {
+        case IPIFY -> IPIFY_URL;
+        case AWS -> AWS_URL;
+      };
 
-      var responses = new ArrayList<ProxyCheckResponseSingle>();
-      for (var proxy : request.getProxyList().stream().map(SFProxy::fromProto).toList()) {
-        var client = ReactorHttpHelper.createReactorClient(proxy, false);
-        var stopWatch = Stopwatch.createStarted();
-        var response =
-          client
-            .get()
-            .uri(url.toString())
-            .responseSingle(
-              (r, b) -> {
-                if (r.status().codeClass() == HttpStatusClass.SUCCESS) {
-                  return b.asString();
-                }
+      instance.scheduler().runAsync(() -> {
+        var results = SFHelpers.maxFutures(settings.get(ProxySettings.PROXY_CHECK_CONCURRENCY), request.getProxyList(), payload -> {
+            var client = ReactorHttpHelper.createReactorClient(SFProxy.fromProto(payload), false);
+            var stopWatch = Stopwatch.createStarted();
+            return cancellationCollector.add(client
+              .get()
+              .uri(url.toString())
+              .responseSingle(
+                (r, b) -> {
+                  if (r.status().codeClass() == HttpStatusClass.SUCCESS) {
+                    return b.asString();
+                  }
 
-                return Mono.empty();
-              })
-            .blockOptional();
+                  return Mono.empty();
+                })
+              .timeout(Duration.ofSeconds(15))
+              .onErrorResume(t -> Mono.empty())
+              .map(response -> ProxyCheckResponseSingle.newBuilder()
+                .setProxy(payload)
+                .setLatency((int) stopWatch.stop().elapsed(TimeUnit.MILLISECONDS))
+                .setValid(true)
+                .setRealIp(response)
+                .build())
+              .switchIfEmpty(Mono.fromSupplier(() -> ProxyCheckResponseSingle.newBuilder()
+                .setProxy(payload)
+                .setLatency((int) stopWatch.stop().elapsed(TimeUnit.MILLISECONDS))
+                .setValid(false)
+                .build()))
+              .toFuture());
+          }, result -> {
+            if (responseObserver.isCancelled()) {
+              return;
+            }
 
-        var single =
-          ProxyCheckResponseSingle.newBuilder()
-            .setProxy(proxy.toProto())
-            .setLatency((int) stopWatch.stop().elapsed(TimeUnit.MILLISECONDS))
-            .setValid(response.isPresent());
+            if (result.getValid()) {
+              responseObserver.onNext(ProxyCheckResponse.newBuilder()
+                .setOneSuccess(ProxyCheckOneSuccess.newBuilder()
+                  .build())
+                .build());
+            } else {
+              responseObserver.onNext(ProxyCheckResponse.newBuilder()
+                .setOneFailure(ProxyCheckOneFailure.newBuilder()
+                  .build())
+                .build());
+            }
+          },
+          cancellationCollector);
 
-        response.ifPresent(single::setRealIp);
+        if (responseObserver.isCancelled()) {
+          return;
+        }
 
-        responses.add(single.build());
-      }
-
-      responseObserver.onNext(ProxyCheckResponse.newBuilder().addAllResponse(responses).build());
-      responseObserver.onCompleted();
+        responseObserver.onNext(ProxyCheckResponse.newBuilder()
+          .setFullList(ProxyCheckFullList.newBuilder()
+            .addAllResponse(results)
+            .build())
+          .build());
+        responseObserver.onCompleted();
+      });
     } catch (Throwable t) {
       log.error("Error checking proxy", t);
       throw new StatusRuntimeException(Status.INTERNAL.withDescription(t.getMessage()).withCause(t));

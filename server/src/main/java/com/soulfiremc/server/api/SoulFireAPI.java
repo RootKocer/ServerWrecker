@@ -17,81 +17,74 @@
  */
 package com.soulfiremc.server.api;
 
-import com.soulfiremc.server.SoulFireServer;
 import com.soulfiremc.server.api.event.EventExceptionHandler;
-import com.soulfiremc.server.api.event.EventUtil;
-import com.soulfiremc.server.api.event.SoulFireGlobalEvent;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
-import java.util.function.Consumer;
+import com.soulfiremc.server.api.event.SoulFireEvent;
 import net.lenni0451.lambdaevents.LambdaManager;
 import net.lenni0451.lambdaevents.generator.ASMGenerator;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.function.Consumer;
+
+/**
+ * Holds all instances of plugins running in this JVM.
+ * The SoulFire server accesses this class on startup and advertises itself to all plugins.
+ * It also holds the event manager for all events in this JVM.
+ */
 public class SoulFireAPI {
+  private static final List<Plugin> SERVER_EXTENSIONS = new ArrayList<>();
   private static final LambdaManager EVENT_BUS =
-    LambdaManager.basic(new ASMGenerator())
+    LambdaManager.threadSafe(new ASMGenerator())
       .setExceptionHandler(EventExceptionHandler.INSTANCE)
       .setEventFilter(
         (c, h) -> {
-          if (SoulFireGlobalEvent.class.isAssignableFrom(c)) {
+          if (SoulFireEvent.class.isAssignableFrom(c)) {
             return true;
           } else {
             throw new IllegalStateException("This event handler only accepts global events");
           }
         });
-  private static final List<ServerPlugin> SERVER_EXTENSIONS = new ArrayList<>();
-  private static SoulFireServer soulFireServer;
 
   private SoulFireAPI() {}
 
-  /**
-   * Get the current SoulFire instance for access to internals.
-   *
-   * @return The current SoulFire instance.
-   */
-  public static SoulFireServer getSoulFire() {
-    Objects.requireNonNull(soulFireServer, "SoulFireAPI not initialized yet!");
-    return soulFireServer;
+  public static void registerServerExtension(Plugin plugin) {
+    SERVER_EXTENSIONS.add(plugin);
   }
 
-  /**
-   * Internal method to set the current SoulFire instance.
-   *
-   * @param soulFireServer The current SoulFire instance.
-   */
-  public static void setSoulFire(SoulFireServer soulFireServer) {
-    if (SoulFireAPI.soulFireServer != null) {
-      throw new IllegalStateException("SoulFireAPI already initialized!");
-    }
-
-    SoulFireAPI.soulFireServer = soulFireServer;
+  public static List<Plugin> getServerExtensions() {
+    return Collections.unmodifiableList(SERVER_EXTENSIONS);
   }
 
-  public static void postEvent(SoulFireGlobalEvent event) {
+  public static <E extends SoulFireEvent> void registerListener(Class<E> clazz, Consumer<E> consumer) {
+    EVENT_BUS.registerConsumer(consumer, clazz);
+  }
+
+  public static <E extends SoulFireEvent> void unregisterListener(Class<E> clazz, Consumer<E> consumer) {
+    EVENT_BUS.unregisterConsumer(consumer, clazz);
+  }
+
+  public static void registerListenersOfClass(Class<?> clazz) {
+    EVENT_BUS.register(clazz);
+  }
+
+  public static void unregisterListenersOfClass(Class<?> clazz) {
+    EVENT_BUS.unregister(clazz);
+  }
+
+  public static void registerListenersOfObject(Object object) {
+    EVENT_BUS.register(object);
+  }
+
+  public static void unregisterListenersOfObject(Object object) {
+    EVENT_BUS.unregister(object);
+  }
+
+  public static void postEvent(SoulFireEvent event) {
     EVENT_BUS.call(event);
   }
 
-  public static <T extends SoulFireGlobalEvent> void registerListener(
-    Class<T> clazz, Consumer<? super T> subscriber) {
-    EventUtil.runAndAssertChanged(EVENT_BUS, () -> EVENT_BUS.registerConsumer(subscriber, clazz));
-  }
-
-  public static void registerListeners(Class<?> listenerClass) {
-    EventUtil.runAndAssertChanged(EVENT_BUS, () -> EVENT_BUS.register(listenerClass));
-  }
-
-  public static LambdaManager getEventBus() {
+  public static LambdaManager getEventManager() {
     return EVENT_BUS;
-  }
-
-  public static void registerServerExtension(ServerPlugin serverPlugin) {
-    SERVER_EXTENSIONS.add(serverPlugin);
-    serverPlugin.onLoad();
-  }
-
-  public static List<ServerPlugin> getServerExtensions() {
-    return Collections.unmodifiableList(SERVER_EXTENSIONS);
   }
 }

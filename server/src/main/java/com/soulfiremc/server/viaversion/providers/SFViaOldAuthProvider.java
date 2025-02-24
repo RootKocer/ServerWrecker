@@ -17,15 +17,19 @@
  */
 package com.soulfiremc.server.viaversion.providers;
 
+import com.soulfiremc.server.protocol.netty.ViaClientSession;
 import com.soulfiremc.server.viaversion.StorableSession;
 import com.viaversion.viaversion.api.connection.UserConnection;
-import java.util.Objects;
 import net.raphimc.vialegacy.protocol.release.r1_2_4_5tor1_3_1_2.provider.OldAuthProvider;
+
+import java.util.Objects;
 
 public class SFViaOldAuthProvider extends OldAuthProvider {
   @Override
   public void sendAuthRequest(UserConnection user, String serverId) {
-    var session = Objects.requireNonNull(user.get(StorableSession.class)).session();
-    session.botConnection().joinServerId(serverId, session);
+    var session = (ViaClientSession) Objects.requireNonNull(user.get(StorableSession.class), "Session provider is null")
+      .session();
+
+    session.botConnection().joinServerId(serverId);
   }
 }

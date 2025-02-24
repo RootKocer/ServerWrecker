@@ -15,11 +15,12 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-package com.soulfiremc.data;
+package com.soulfiremc.server.data;
+
+import net.kyori.adventure.key.KeyPattern;
 
 import java.util.ArrayList;
 import java.util.List;
-import net.kyori.adventure.key.KeyPattern;
 
 @SuppressWarnings("unused")
 public class BlockTags {

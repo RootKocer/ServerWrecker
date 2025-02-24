@@ -18,14 +18,9 @@
 package com.soulfiremc.server.protocol.bot.state.registry;
 
 import com.google.gson.JsonElement;
+import com.soulfiremc.server.data.Registry;
 import com.soulfiremc.server.data.RegistryValue;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.util.ArrayList;
-import java.util.Locale;
-import java.util.Objects;
+import com.soulfiremc.server.util.SFHelpers;
 import lombok.Getter;
 import lombok.SneakyThrows;
 import net.kyori.adventure.key.Key;
@@ -46,6 +41,14 @@ import org.geysermc.mcprotocollib.protocol.data.game.chat.ChatType;
 import org.geysermc.mcprotocollib.protocol.data.game.chat.ChatTypeDecoration;
 import org.jetbrains.annotations.Nullable;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.util.ArrayList;
+import java.util.Locale;
+import java.util.Objects;
+
 @Getter
 public class SFChatType implements RegistryValue<SFChatType> {
   private static final TextComponentCodec CODEC = TextComponentCodec.LATEST;
@@ -53,11 +56,13 @@ public class SFChatType implements RegistryValue<SFChatType> {
   private static final IStyleSerializer<JsonElement> JSON_STYLE_SERIALIZER = CODEC.getJsonSerializer().getStyleSerializer();
   private final Key key;
   private final int id;
+  private final Registry<SFChatType> registry;
   private final ChatType mcplChatType;
 
-  public SFChatType(Key key, int id, NbtMap chatTypeData) {
+  public SFChatType(Key key, int id, Registry<SFChatType> registry, NbtMap chatTypeData) {
     this.key = key;
     this.id = id;
+    this.registry = registry;
     this.mcplChatType = new ChatType(
       readDecoration(chatTypeData.getCompound("chat")),
       readDecoration(chatTypeData.getCompound("narration"))
@@ -97,11 +102,11 @@ public class SFChatType implements RegistryValue<SFChatType> {
   public static TranslatableComponent buildComponent(ChatTypeDecoration decoration, BoundChatMessageInfo chatInfo) {
     var translationArgs = new ArrayList<ComponentLike>();
     for (var parameter : decoration.parameters()) {
-      switch (parameter) {
-        case ChatTypeDecoration.Parameter.CONTENT -> translationArgs.add(chatInfo.content);
-        case ChatTypeDecoration.Parameter.SENDER -> translationArgs.add(chatInfo.sender);
-        case ChatTypeDecoration.Parameter.TARGET -> translationArgs.add(Objects.requireNonNullElse(chatInfo.target, Component.empty()));
-      }
+      SFHelpers.mustSupply(() -> switch (parameter) {
+        case ChatTypeDecoration.Parameter.CONTENT -> () -> translationArgs.add(chatInfo.content);
+        case ChatTypeDecoration.Parameter.SENDER -> () -> translationArgs.add(chatInfo.sender);
+        case ChatTypeDecoration.Parameter.TARGET -> () -> translationArgs.add(Objects.requireNonNullElse(chatInfo.target, Component.empty()));
+      });
     }
 
     return Component.translatable(decoration.translationKey(), null, deserializeStyle(decoration.style()), translationArgs);

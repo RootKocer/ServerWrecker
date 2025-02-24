@@ -17,7 +17,8 @@
  */
 package com.soulfiremc.server.data;
 
-import com.soulfiremc.server.util.BlockTypeHelper;
+import com.soulfiremc.server.util.SFBlockHelpers;
+
 import java.util.Optional;
 
 public class BlockItems {
@@ -27,10 +28,10 @@ public class BlockItems {
   static {
     for (var itemType : ItemType.REGISTRY.values()) {
       for (var blockType : BlockType.REGISTRY.values()) {
-        var blockShapeTypes = BlockState.forDefaultBlockType(blockType).blockShapeGroup();
+        var blockShapeTypes = BlockState.forDefaultBlockType(blockType).collisionShape();
 
         // Let's not use bedrock as a building block
-        if (BlockTypeHelper.isDiggable(blockType)
+        if (SFBlockHelpers.isDiggable(blockType)
           && itemType.key().equals(blockType.key())
           && blockShapeTypes.isFullBlock()) {
           VALUES[itemType.id()] = blockType;

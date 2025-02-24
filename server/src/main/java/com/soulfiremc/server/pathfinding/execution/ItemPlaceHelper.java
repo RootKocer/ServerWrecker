@@ -22,17 +22,24 @@ import com.soulfiremc.server.data.BlockType;
 import com.soulfiremc.server.data.ItemType;
 import com.soulfiremc.server.pathfinding.Costs;
 import com.soulfiremc.server.pathfinding.SFVec3i;
+import com.soulfiremc.server.protocol.BotConnection;
 import com.soulfiremc.server.protocol.bot.SessionDataManager;
 import com.soulfiremc.server.protocol.bot.container.ContainerSlot;
 import com.soulfiremc.server.protocol.bot.container.InventoryManager;
 import com.soulfiremc.server.protocol.bot.container.PlayerInventoryContainer;
 import com.soulfiremc.server.protocol.bot.container.SFItemStack;
 import com.soulfiremc.server.util.TimeUtil;
+import lombok.extern.slf4j.Slf4j;
+
 import java.util.concurrent.TimeUnit;
 
-public class ItemPlaceHelper {
-  public static boolean placeBestBlockInHand(SessionDataManager dataManager) {
-    var inventoryManager = dataManager.inventoryManager();
+@Slf4j
+public final class ItemPlaceHelper {
+  private ItemPlaceHelper() {
+  }
+
+  public static boolean placeBestBlockInHand(BotConnection connection) {
+    var inventoryManager = connection.inventoryManager();
     var playerInventory = inventoryManager.playerInventory();
 
     ItemType leastHardItemType = null;
@@ -68,7 +75,7 @@ public class ItemPlaceHelper {
   }
 
   public static boolean placeBestToolInHand(SessionDataManager dataManager, SFVec3i blockPosition) {
-    var inventoryManager = dataManager.inventoryManager();
+    var inventoryManager = dataManager.connection().inventoryManager();
     var playerInventory = inventoryManager.playerInventory();
 
     SFItemStack bestItemStack = null;
@@ -86,15 +93,14 @@ public class ItemPlaceHelper {
 
       var optionalBlockType = dataManager.currentLevel().getBlockState(blockPosition).blockType();
       if (optionalBlockType == BlockType.VOID_AIR) {
-        throw new IllegalStateException("Block at %s is not in view range".formatted(blockPosition));
+        throw new IllegalStateException("Block at %s is not loaded".formatted(blockPosition));
       }
 
       var cost =
         Costs.getRequiredMiningTicks(
             dataManager.tagsState(),
-            dataManager.clientEntity(),
-            dataManager.inventoryManager().playerInventory(),
-            dataManager.clientEntity().onGround(),
+            dataManager.localPlayer(),
+            dataManager.localPlayer().onGround(),
             slotItem,
             optionalBlockType)
           .ticks();
@@ -119,34 +125,32 @@ public class ItemPlaceHelper {
 
   private static boolean placeInHand(InventoryManager inventoryManager, PlayerInventoryContainer playerInventory,
                                      ContainerSlot slot) {
-    if (!inventoryManager.tryInventoryControl()) {
+    if (inventoryManager.lookingAtForeignContainer()) {
+      log.warn("Cannot place item in hand while looking at a foreign container");
       return false;
     }
 
-    try {
-      if (playerInventory.isHeldItem(slot)) {
-        return true;
-      } else if (playerInventory.isHotbar(slot)) {
-        inventoryManager.heldItemSlot(playerInventory.toHotbarIndex(slot));
-        inventoryManager.sendHeldItemChange();
-        return true;
-      } else if (playerInventory.isMainInventory(slot)) {
+    if (playerInventory.isHeldItem(slot)) {
+      return true;
+    } else if (playerInventory.isHotbar(slot)) {
+      inventoryManager.changeHeldItem(playerInventory.toHotbarIndex(slot));
+      return true;
+    } else if (playerInventory.isMainInventory(slot)) {
+      inventoryManager.openPlayerInventory();
+      inventoryManager.leftClickSlot(slot);
+      TimeUtil.waitTime(50, TimeUnit.MILLISECONDS);
+      inventoryManager.leftClickSlot(playerInventory.getHeldItem());
+      TimeUtil.waitTime(50, TimeUnit.MILLISECONDS);
+
+      if (inventoryManager.cursorItem() != null) {
         inventoryManager.leftClickSlot(slot);
         TimeUtil.waitTime(50, TimeUnit.MILLISECONDS);
-        inventoryManager.leftClickSlot(playerInventory.getHeldItem());
-        TimeUtil.waitTime(50, TimeUnit.MILLISECONDS);
-
-        if (inventoryManager.cursorItem() != null) {
-          inventoryManager.leftClickSlot(slot);
-          TimeUtil.waitTime(50, TimeUnit.MILLISECONDS);
-        }
-
-        return true;
-      } else {
-        throw new IllegalStateException("Unexpected container slot type");
       }
-    } finally {
-      inventoryManager.unlockInventoryControl();
+
+      inventoryManager.closeInventory();
+      return true;
+    } else {
+      throw new IllegalStateException("Unexpected container slot type");
     }
   }
 }

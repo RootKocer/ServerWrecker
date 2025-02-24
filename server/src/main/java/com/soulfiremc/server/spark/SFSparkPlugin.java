@@ -19,15 +19,16 @@ package com.soulfiremc.server.spark;
 
 import com.soulfiremc.builddata.BuildData;
 import com.soulfiremc.server.SoulFireServer;
-import java.nio.file.Path;
-import java.util.logging.Level;
-import java.util.stream.Stream;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import me.lucko.spark.common.SparkPlatform;
 import me.lucko.spark.common.SparkPlugin;
 import me.lucko.spark.common.platform.PlatformInfo;
+
+import java.nio.file.Path;
+import java.util.logging.Level;
+import java.util.stream.Stream;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -67,7 +68,7 @@ public class SFSparkPlugin implements SparkPlugin {
 
   @Override
   public void executeAsync(final Runnable task) {
-    server.threadPool().submit(task);
+    server.scheduler().schedule(task);
   }
 
   @Override
@@ -78,6 +79,19 @@ public class SFSparkPlugin implements SparkPlugin {
       log.warn(msg);
     } else if (level == Level.SEVERE) {
       log.error(msg);
+    } else {
+      throw new IllegalArgumentException(level.getName());
+    }
+  }
+
+  @Override
+  public void log(Level level, String s, Throwable throwable) {
+    if (level == Level.INFO) {
+      log.info(s, throwable);
+    } else if (level == Level.WARNING) {
+      log.warn(s, throwable);
+    } else if (level == Level.SEVERE) {
+      log.error(s, throwable);
     } else {
       throw new IllegalArgumentException(level.getName());
     }

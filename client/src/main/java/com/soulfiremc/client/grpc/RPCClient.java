@@ -23,19 +23,15 @@ import com.linecorp.armeria.client.grpc.GrpcClients;
 import com.linecorp.armeria.common.HttpHeaderNames;
 import com.linecorp.armeria.common.grpc.GrpcSerializationFormats;
 import com.soulfiremc.builddata.BuildData;
-import com.soulfiremc.grpc.generated.AttackServiceGrpc;
-import com.soulfiremc.grpc.generated.CommandServiceGrpc;
-import com.soulfiremc.grpc.generated.ConfigServiceGrpc;
-import com.soulfiremc.grpc.generated.LogsServiceGrpc;
-import com.soulfiremc.grpc.generated.MCAuthServiceGrpc;
-import com.soulfiremc.grpc.generated.ProxyCheckServiceGrpc;
+import com.soulfiremc.grpc.generated.*;
 import io.grpc.Codec;
 import io.grpc.Context;
+import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
+
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
-import lombok.Getter;
-import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Getter
@@ -44,14 +40,16 @@ public class RPCClient {
   private final LogsServiceGrpc.LogsServiceBlockingStub logStubBlocking;
   private final CommandServiceGrpc.CommandServiceStub commandStub;
   private final CommandServiceGrpc.CommandServiceBlockingStub commandStubBlocking;
-  private final AttackServiceGrpc.AttackServiceStub attackStub;
+  private final InstanceServiceGrpc.InstanceServiceStub instanceStub;
+  private final InstanceServiceGrpc.InstanceServiceBlockingStub instanceStubBlocking;
   private final ConfigServiceGrpc.ConfigServiceBlockingStub configStubBlocking;
   private final MCAuthServiceGrpc.MCAuthServiceBlockingStub mcAuthServiceBlocking;
   private final ProxyCheckServiceGrpc.ProxyCheckServiceBlockingStub proxyCheckServiceBlocking;
 
+  @SuppressWarnings("HttpUrlsUsage")
   public RPCClient(String host, int port, String jwt) {
     this(
-      GrpcClients.builder("https://%s:%d".formatted(host, port))
+      GrpcClients.builder("http://%s:%d".formatted(host, port))
         .serializationFormat(GrpcSerializationFormats.PROTO)
         .compressor(new Codec.Gzip())
         .callCredentials(new JwtCredential(jwt))
@@ -71,7 +69,8 @@ public class RPCClient {
     logStubBlocking = clientBuilder.build(LogsServiceGrpc.LogsServiceBlockingStub.class);
     commandStub = clientBuilder.build(CommandServiceGrpc.CommandServiceStub.class);
     commandStubBlocking = clientBuilder.build(CommandServiceGrpc.CommandServiceBlockingStub.class);
-    attackStub = clientBuilder.build(AttackServiceGrpc.AttackServiceStub.class);
+    instanceStub = clientBuilder.build(InstanceServiceGrpc.InstanceServiceStub.class);
+    instanceStubBlocking = clientBuilder.build(InstanceServiceGrpc.InstanceServiceBlockingStub.class);
     configStubBlocking = clientBuilder.build(ConfigServiceGrpc.ConfigServiceBlockingStub.class);
     mcAuthServiceBlocking = clientBuilder.build(MCAuthServiceGrpc.MCAuthServiceBlockingStub.class);
     proxyCheckServiceBlocking =

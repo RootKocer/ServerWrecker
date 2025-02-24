@@ -18,18 +18,18 @@
 package com.soulfiremc.server.pathfinding;
 
 import com.soulfiremc.server.pathfinding.execution.WorldAction;
-import java.util.ArrayList;
-import java.util.List;
+import com.soulfiremc.server.pathfinding.graph.actions.movement.ActionDirection;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
-import lombok.Setter;
 import lombok.ToString;
+import org.jetbrains.annotations.Nullable;
+
+import java.util.List;
 
 @Getter
-@Setter
 @ToString
 @AllArgsConstructor
-public class MinecraftRouteNode implements Comparable<MinecraftRouteNode> {
+public final class MinecraftRouteNode implements Comparable<MinecraftRouteNode> {
   /**
    * The world state of this node.
    */
@@ -38,7 +38,12 @@ public class MinecraftRouteNode implements Comparable<MinecraftRouteNode> {
   /**
    * The currently best known node to this node.
    */
-  private MinecraftRouteNode parent;
+  private @Nullable MinecraftRouteNode parent;
+
+  /**
+   * The direction from the parent to this node.
+   */
+  private @Nullable ActionDirection parentToNodeDirection;
 
   /**
    * The actions from the previous node to this node that were used to get to this node.
@@ -51,34 +56,44 @@ public class MinecraftRouteNode implements Comparable<MinecraftRouteNode> {
   private double sourceCost;
 
   /**
-   * The estimated cost of the route from this node to the target.
+   * The cost of the route from this node to the target.
+   */
+  private double targetCost;
+
+  /**
+   * The estimated cost of the route from this node to the target + the source cost.
    */
   private double totalRouteScore;
 
-  private List<MinecraftRouteNode> children;
-
-  public MinecraftRouteNode(NodeState node, MinecraftRouteNode parent, List<WorldAction> actions,
-                            double sourceCost, double totalRouteScore) {
-    this.node = node;
-    this.parent = parent;
-    this.actions = actions;
-    this.sourceCost = sourceCost;
-    this.totalRouteScore = totalRouteScore;
-    this.children = new ArrayList<>();
-  }
-
   public MinecraftRouteNode(NodeState node, List<WorldAction> actions,
-                            double sourceCost, double totalRouteScore) {
-    this.node = node;
-    this.parent = null;
-    this.actions = actions;
-    this.sourceCost = sourceCost;
-    this.totalRouteScore = totalRouteScore;
-    this.children = new ArrayList<>();
+                            double sourceCost, double targetCost,
+                            double totalRouteScore) {
+    this(
+      node,
+      null,
+      null,
+      actions,
+      sourceCost,
+      targetCost,
+      totalRouteScore
+    );
   }
 
   @Override
   public int compareTo(MinecraftRouteNode other) {
     return Double.compare(this.totalRouteScore, other.totalRouteScore);
+  }
+
+  public void setBetterParent(MinecraftRouteNode parent,
+                              ActionDirection moveDirection,
+                              List<WorldAction> actions,
+                              double sourceCost, double targetCost,
+                              double totalRouteScore) {
+    this.parent = parent;
+    this.parentToNodeDirection = moveDirection;
+    this.actions = actions;
+    this.sourceCost = sourceCost;
+    this.targetCost = targetCost;
+    this.totalRouteScore = totalRouteScore;
   }
 }

@@ -14,15 +14,17 @@ repositories {
 
 dependencies {
   implementation("org.vineflower:vineflower:1.10.1")
-  implementation("com.github.javaparser:javaparser-symbol-solver-core:3.26.1")
+  implementation("com.github.javaparser:javaparser-symbol-solver-core:3.26.3")
+  implementation(libs.reflect)
 }
 
 unimined.minecraft {
-  version("1.21")
+  version("1.21.4")
 
   mappings {
     intermediary()
     mojmap()
+    parchment("1.21.4", "2025.02.16")
 
     devFallbackNamespace("intermediary")
   }
@@ -32,7 +34,7 @@ unimined.minecraft {
   }
 
   fabric {
-    loader("0.15.10")
+    loader("0.16.10")
   }
 
   defaultRemapJar = true

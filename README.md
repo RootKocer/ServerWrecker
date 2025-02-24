@@ -12,13 +12,10 @@
 </p>
 <p align="center"><a href="https://discord.gg/vHgRd6YZmH"><img src="https://discordapp.com/api/guilds/739784741124833301/embed.png" alt="Discord embed"></a></p>
 
-<p align="center">
-<a href="https://github.com/AlexProgrammerDE/SoulFire/releases/latest"><img src="https://img.shields.io/badge/DOWNLOAD-LATEST-success?style=for-the-badge" alt="download badge"></a>
-<a href="https://nightly.link/AlexProgrammerDE/SoulFire/workflows/build/main/SoulFire.zip"><img src="https://img.shields.io/badge/DOWNLOAD-DEV__BUILD-important?style=for-the-badge" alt="download2 badge"></a>
-</p>
-
 Advanced Minecraft Server-Stresser Tool. Launch bot attacks on your own servers to stress-test them and measure
 performance.
+
+This repository only contains the CLI and server implementation. The official GUI client is in [another repository](https://github.com/AlexProgrammerDE/SoulFireClient).
 
 ---
 
@@ -37,13 +34,16 @@ performance.
 * Load and save profiles for quick access
 * Support for online and offline mode servers
 * Supports [almost every Minecraft version](#-version-support)
-* Use `Microsoft`, `The Altening`, `EasyMC` or `Offline` accounts
+* Use `Microsoft` (Credentials & Device Code supported), `The Altening` or `Offline` accounts
 * Use `HTTP`, `SOCKS4` and `SOCKS5` proxies
 * Multiple [built-in plugins](#-plugins) like `AutoRespawn`, `AutoJump`, `ClientSettings` and more
 * Console command support
 * A* Pathfinding (Diagonal moves, parkour, mining blocks, placing blocks)
 
 ## 🖥 Installation
+
+> [!TIP]
+> Want to check out how SoulFire looks before installing it? Take a look at the official [demo page](https://demo.soulfiremc.com).
 
 For installing SoulFire, please refer to the [installation guide](https://soulfiremc.com/docs/installation).
 
@@ -72,8 +72,9 @@ If you want to use the CLI of SoulFire, please refer to the [CLI Mode Guide](htt
 
 ## 🧵 Demo
 
-SoulFire has a built-in GUI for easy usage.
-![GUI](./assets/demo.png)
+SoulFire has a built-in GUI for easy usage. Try a SoulFire demo yourself at the [demo page](https://demo.soulfiremc.com).
+
+https://github.com/user-attachments/assets/81fbf91b-1aae-49ca-a101-bc3467e048e6
 
 ## ✨ Nightly builds
 
@@ -104,6 +105,17 @@ Feel free to join our Discord community server:
 
 This project is in active development, so if you have any feature requests or issues, please submit them here on GitHub.
 PRs are welcome, too.
+
+## 🏅 Sponsors
+
+<table>
+ <tbody>
+  <tr>
+   <td align="center"><img alt="[SignPath]" src="https://avatars.githubusercontent.com/u/34448643" height="30"/></td>
+   <td>Free code signing on Windows provided by <a href="https://signpath.io/?utm_source=foundation&utm_medium=github&utm_campaign=soulfire">SignPath.io</a>, certificate by <a href="https://signpath.org/?utm_source=foundation&utm_medium=github&utm_campaign=soulfire">SignPath Foundation</a></td>
+  </tr>
+ </tbody>
+</table>
 
 ## 🌟 Star History
 

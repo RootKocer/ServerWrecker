@@ -18,21 +18,18 @@
 package com.soulfiremc.server.protocol;
 
 import com.soulfiremc.server.data.ResourceKey;
-import com.soulfiremc.util.ResourceHelper;
+import com.soulfiremc.server.util.SFHelpers;
 import io.netty.buffer.Unpooled;
 import it.unimi.dsi.fastutil.Pair;
-import it.unimi.dsi.fastutil.ints.Int2ObjectMaps;
-import java.io.ByteArrayInputStream;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.zip.GZIPInputStream;
 import lombok.extern.slf4j.Slf4j;
 import net.kyori.adventure.key.Key;
 import org.cloudburstmc.nbt.NbtMap;
-import org.geysermc.mcprotocollib.protocol.codec.MinecraftCodecHelper;
+import org.geysermc.mcprotocollib.protocol.codec.MinecraftTypes;
 import org.geysermc.mcprotocollib.protocol.data.game.KnownPack;
+
+import java.io.ByteArrayInputStream;
+import java.util.*;
+import java.util.zip.GZIPInputStream;
 
 @Slf4j
 public class BuiltInKnownPackRegistry {
@@ -42,22 +39,21 @@ public class BuiltInKnownPackRegistry {
 
   public BuiltInKnownPackRegistry() {
     var byteArrayInputStream =
-      new ByteArrayInputStream(ResourceHelper.getResourceAsBytes("minecraft/builtin_packs.bin.zip"));
+      new ByteArrayInputStream(SFHelpers.getResourceAsBytes("minecraft/builtin_packs.bin.zip"));
     try (var gzipInputStream = new GZIPInputStream(byteArrayInputStream)) {
       var bytes = gzipInputStream.readAllBytes();
       var in = Unpooled.wrappedBuffer(bytes);
-      var helper = new MinecraftCodecHelper(Int2ObjectMaps.emptyMap(), Map.of());
-      supportedPacks = helper.readList(in, buf -> new KnownPack(helper.readString(buf), helper.readString(buf), helper.readString(buf)));
+      supportedPacks = MinecraftTypes.readList(in, buf -> new KnownPack(MinecraftTypes.readString(buf), MinecraftTypes.readString(buf), MinecraftTypes.readString(buf)));
 
-      helper.readList(in, buf -> {
-        var registryKey = helper.readResourceLocation(in);
+      MinecraftTypes.readList(in, buf -> {
+        var registryKey = MinecraftTypes.readResourceLocation(in);
         var holders = new HashMap<Key, Pair<KnownPack, NbtMap>>();
-        helper.readList(in, buf2 -> {
-          var knownPack = new KnownPack(helper.readString(buf), helper.readString(buf), helper.readString(buf));
-          var packKey = helper.readResourceLocation(buf);
+        MinecraftTypes.readList(in, buf2 -> {
+          var knownPack = new KnownPack(MinecraftTypes.readString(buf), MinecraftTypes.readString(buf), MinecraftTypes.readString(buf));
+          var packKey = MinecraftTypes.readResourceLocation(buf);
           return Pair.of(packKey, Pair.of(
             knownPack,
-            helper.readNullable(in, helper::readCompoundTag)
+            MinecraftTypes.readNullable(in, MinecraftTypes::readCompoundTag)
           ));
         }).forEach(p -> holders.put(p.left(), p.right()));
 
@@ -80,20 +76,25 @@ public class BuiltInKnownPackRegistry {
   }
 
   public NbtMap mustFindData(ResourceKey<?> registryKey, Key holderKey, List<KnownPack> allowedPacks) {
+    return findDataOptionally(registryKey, holderKey, allowedPacks)
+      .orElseThrow(() -> new IllegalArgumentException("No data found for " + registryKey + " " + holderKey));
+  }
+
+  public Optional<NbtMap> findDataOptionally(ResourceKey<?> registryKey, Key holderKey, List<KnownPack> allowedPacks) {
     var holders = builtInRegistry.get(registryKey.key());
     if (holders == null) {
-      throw new RuntimeException("Unknown registry value: " + registryKey);
+      return Optional.empty();
     }
 
     var holder = holders.get(holderKey);
     if (holder == null) {
-      throw new RuntimeException("Unknown holder value: " + holderKey);
+      return Optional.empty();
     }
 
     if (!allowedPacks.contains(holder.left())) {
-      throw new RuntimeException("Unknown pack: " + holder.left());
+      return Optional.empty();
     }
 
-    return holder.right();
+    return Optional.ofNullable(holder.right());
   }
 }

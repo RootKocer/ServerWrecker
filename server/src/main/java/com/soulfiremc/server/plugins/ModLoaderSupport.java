@@ -17,31 +17,35 @@
  */
 package com.soulfiremc.server.plugins;
 
-import com.soulfiremc.server.api.PluginHelper;
-import com.soulfiremc.server.api.SoulFireAPI;
+import com.soulfiremc.server.api.InternalPlugin;
+import com.soulfiremc.server.api.PluginInfo;
 import com.soulfiremc.server.api.event.bot.SFPacketReceiveEvent;
 import com.soulfiremc.server.api.event.bot.SFPacketSendingEvent;
-import com.soulfiremc.server.api.event.lifecycle.SettingsRegistryInitEvent;
+import com.soulfiremc.server.api.event.lifecycle.InstanceSettingsRegistryInitEvent;
 import com.soulfiremc.server.protocol.BotConnection;
 import com.soulfiremc.server.settings.lib.SettingsObject;
+import com.soulfiremc.server.settings.property.BooleanProperty;
 import com.soulfiremc.server.settings.property.ComboProperty;
-import com.soulfiremc.server.settings.property.Property;
+import com.soulfiremc.server.settings.property.ImmutableBooleanProperty;
+import com.soulfiremc.server.settings.property.ImmutableComboProperty;
 import io.netty.buffer.Unpooled;
-import java.util.List;
-import javax.inject.Inject;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.kyori.adventure.key.Key;
 import net.lenni0451.lambdaevents.EventHandler;
+import org.geysermc.mcprotocollib.protocol.codec.MinecraftTypes;
 import org.geysermc.mcprotocollib.protocol.packet.common.clientbound.ClientboundCustomPayloadPacket;
 import org.geysermc.mcprotocollib.protocol.packet.handshake.serverbound.ClientIntentionPacket;
 import org.geysermc.mcprotocollib.protocol.packet.login.clientbound.ClientboundCustomQueryPacket;
+import org.pf4j.Extension;
+
+import java.util.List;
 
 @Slf4j
-@RequiredArgsConstructor(onConstructor_ = @Inject)
-public class ModLoaderSupport implements InternalPlugin {
+@Extension(ordinal = 1)
+public class ModLoaderSupport extends InternalPlugin {
   private static final Key FML_HS_KEY = Key.key("fml:hs");
   private static final Key FML_FML_KEY = Key.key("fml:fml");
   private static final Key FML_MP_KEY = Key.key("fml:mp");
@@ -51,9 +55,15 @@ public class ModLoaderSupport implements InternalPlugin {
   private static final Key FML2_HANDSHAKE_KEY = Key.key("fml:handshake");
   private static final char HOSTNAME_SEPARATOR = '\0';
 
-  @EventHandler
-  public static void onSettingsRegistryInit(SettingsRegistryInitEvent event) {
-    event.settingsRegistry().addClass(ModLoaderSettings.class, "Mod Loader Support");
+  public ModLoaderSupport() {
+    super(new PluginInfo(
+      "mod-loader-support",
+      "1.0.0",
+      "Supports mod loaders like Forge",
+      "AlexProgrammerDE",
+      "GPL-3.0",
+      "https://soulfiremc.com"
+    ));
   }
 
   private static String createFMLAddress(String initialHostname) {
@@ -65,41 +75,46 @@ public class ModLoaderSupport implements InternalPlugin {
   }
 
   @Override
-  public void onLoad() {
-    SoulFireAPI.registerListeners(ModLoaderSupport.class);
-    PluginHelper.registerBotEventConsumer(SFPacketSendingEvent.class, this::onPacket);
-    PluginHelper.registerBotEventConsumer(SFPacketReceiveEvent.class, this::onPacketReceive);
+  public boolean isAvailable() {
+    return Boolean.getBoolean("sf.mod_support");
   }
 
+  @EventHandler
+  public void onSettingsRegistryInit(InstanceSettingsRegistryInitEvent event) {
+    event.settingsRegistry().addPluginPage(ModLoaderSettings.class, "Mod Loader Support", this, "package", ModLoaderSettings.ENABLED);
+  }
+
+  @EventHandler
   public void onPacket(SFPacketSendingEvent event) {
     if (!(event.packet() instanceof ClientIntentionPacket handshake)) {
       return;
     }
 
     var connection = event.connection();
-    var settingsHolder = connection.settingsHolder();
+    var settingsSource = connection.settingsSource();
     var hostname = handshake.getHostname();
 
-    switch (settingsHolder.get(
-      ModLoaderSettings.FORGE_MODE, ModLoaderSettings.ModLoaderMode.class)) {
+    switch (settingsSource.get(
+      ModLoaderSettings.MOD_LOADER_MODE, ModLoaderSettings.ModLoaderMode.class)) {
       case FML -> event.packet(handshake.withHostname(createFMLAddress(hostname)));
       case FML2 -> event.packet(handshake.withHostname(createFML2Address(hostname)));
     }
   }
 
+  @EventHandler
   public void onPacketReceive(SFPacketReceiveEvent event) {
     var connection = event.connection();
-    var settingsHolder = connection.settingsHolder();
+    var settingsSource = connection.settingsSource();
 
     if (event.packet() instanceof ClientboundCustomPayloadPacket pluginMessage) {
       var channelKey = pluginMessage.getChannel();
-      if (settingsHolder.get(ModLoaderSettings.FORGE_MODE, ModLoaderSettings.ModLoaderMode.class)
+      if (settingsSource.get(ModLoaderSettings.MOD_LOADER_MODE, ModLoaderSettings.ModLoaderMode.class)
         == ModLoaderSettings.ModLoaderMode.FML) {
         handleFMLPluginMessage(event.connection(), channelKey, pluginMessage.getData());
       }
     } else if (event.packet() instanceof ClientboundCustomQueryPacket loginPluginMessage) {
       var channelKey = loginPluginMessage.getChannel();
-      if (settingsHolder.get(ModLoaderSettings.FORGE_MODE, ModLoaderSettings.ModLoaderMode.class)
+      if (settingsSource.get(ModLoaderSettings.MOD_LOADER_MODE, ModLoaderSettings.ModLoaderMode.class)
         == ModLoaderSettings.ModLoaderMode.FML2) {
         handleFML2PluginMessage(event.connection(), channelKey, loginPluginMessage.getData());
       }
@@ -117,9 +132,8 @@ public class ModLoaderSupport implements InternalPlugin {
     switch (discriminator) {
       case 0 -> { // ServerHello
         var fmlProtocolVersion = buffer.readByte();
-        var helper = botConnection.session().getCodecHelper();
         if (fmlProtocolVersion > 1) {
-          var dimension = helper.readVarInt(buffer);
+          var dimension = MinecraftTypes.readVarInt(buffer);
           log.debug("FML dimension override: {}", dimension);
         }
 
@@ -165,13 +179,12 @@ public class ModLoaderSupport implements InternalPlugin {
   }
 
   private void sendFMLModList(BotConnection botConnection, List<Mod> mods) {
-    var helper = botConnection.session().getCodecHelper();
     var buffer = Unpooled.buffer();
     buffer.writeByte(2);
-    helper.writeVarInt(buffer, mods.size());
+    MinecraftTypes.writeVarInt(buffer, mods.size());
     for (var mod : mods) {
-      helper.writeString(buffer, mod.modId);
-      helper.writeString(buffer, mod.version);
+      MinecraftTypes.writeString(buffer, mod.modId);
+      MinecraftTypes.writeString(buffer, mod.version);
     }
 
     botConnection.botControl().sendPluginMessage(FML_HS_KEY, buffer);
@@ -191,17 +204,16 @@ public class ModLoaderSupport implements InternalPlugin {
       return;
     }
 
-    var helper = botConnection.session().getCodecHelper();
     var buffer = Unpooled.wrappedBuffer(data);
 
-    var innerChannelKey = helper.readResourceLocation(buffer);
+    var innerChannelKey = MinecraftTypes.readResourceLocation(buffer);
     if (!innerChannelKey.equals(FML2_HANDSHAKE_KEY)) {
       return;
     }
 
-    var length = helper.readVarInt(buffer);
+    var length = MinecraftTypes.readVarInt(buffer);
     var innerBuffer = buffer.readBytes(length);
-    var packetId = helper.readVarInt(innerBuffer);
+    var packetId = MinecraftTypes.readVarInt(innerBuffer);
     var packetContentBuffer = innerBuffer.readBytes(innerBuffer.readableBytes());
     switch (packetId) {
       case 1 -> {
@@ -215,14 +227,13 @@ public class ModLoaderSupport implements InternalPlugin {
 
   private void sendFML2HandshakeResponse(
     BotConnection botConnection, int packetId, byte[] packetContent) {
-    var helper = botConnection.session().getCodecHelper();
     var innerBuffer = Unpooled.buffer();
-    helper.writeVarInt(innerBuffer, packetId);
+    MinecraftTypes.writeVarInt(innerBuffer, packetId);
     innerBuffer.writeBytes(packetContent);
 
     var buffer = Unpooled.buffer();
-    helper.writeString(buffer, FML2_HANDSHAKE_KEY.toString());
-    helper.writeVarInt(buffer, innerBuffer.readableBytes());
+    MinecraftTypes.writeString(buffer, FML2_HANDSHAKE_KEY.toString());
+    MinecraftTypes.writeVarInt(buffer, innerBuffer.readableBytes());
     buffer.writeBytes(innerBuffer);
 
     botConnection.botControl().sendPluginMessage(FML2_LOGIN_WRAPPER_KEY, buffer);
@@ -230,19 +241,27 @@ public class ModLoaderSupport implements InternalPlugin {
 
   @NoArgsConstructor(access = AccessLevel.PRIVATE)
   private static class ModLoaderSettings implements SettingsObject {
-    private static final Property.Builder BUILDER = Property.builder("mod-loader");
-    public static final ComboProperty FORGE_MODE =
-      BUILDER.ofEnum(
-        "mod-loader-mode",
-        "Mod Loader mode",
-        new String[] {"--mod-loader-mode"},
-        "What mod loader to use",
-        ModLoaderMode.values(),
-        ModLoaderMode.NONE);
+    private static final String NAMESPACE = "mod-loader";
+    public static final BooleanProperty ENABLED =
+      ImmutableBooleanProperty.builder()
+        .namespace(NAMESPACE)
+        .key("enabled")
+        .uiName("Enable mod loader support")
+        .description("Enable the mod loader support")
+        .defaultValue(false)
+        .build();
+    public static final ComboProperty MOD_LOADER_MODE =
+      ImmutableComboProperty.builder()
+        .namespace(NAMESPACE)
+        .key("mod-loader-mode")
+        .uiName("Mod Loader mode")
+        .description("What mod loader to use")
+        .defaultValue(ModLoaderMode.FML2.name())
+        .addOptions(ComboProperty.optionsFromEnum(ModLoaderMode.values(), ModLoaderMode::toString))
+        .build();
 
     @RequiredArgsConstructor
     enum ModLoaderMode {
-      NONE("None"),
       FML("FML (Forge 1.7-1.12)"),
       FML2("FML2 (Forge 1.13+)");
 

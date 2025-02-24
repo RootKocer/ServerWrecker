@@ -21,13 +21,16 @@ import com.soulfiremc.server.pathfinding.MinecraftRouteNode;
 import com.soulfiremc.server.pathfinding.SFVec3i;
 import com.soulfiremc.server.pathfinding.execution.WorldAction;
 import com.soulfiremc.server.pathfinding.graph.MinecraftGraph;
+
 import java.util.List;
 
+/**
+ * Goal to get close to a specific position.
+ *
+ * @param goal      the goal position to get close to
+ * @param maxRadius the maximum radius to be close to the goal
+ */
 public record CloseToPosGoal(SFVec3i goal, int maxRadius) implements GoalScorer {
-  public CloseToPosGoal(int x, int y, int z, int maxRadius) {
-    this(SFVec3i.from(x, y, z), maxRadius);
-  }
-
   @Override
   public double computeScore(MinecraftGraph graph, SFVec3i blockPosition, List<WorldAction> actions) {
     return blockPosition.distance(goal);

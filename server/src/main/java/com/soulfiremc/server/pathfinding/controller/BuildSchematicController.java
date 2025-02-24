@@ -19,19 +19,22 @@ package com.soulfiremc.server.pathfinding.controller;
 
 import com.soulfiremc.server.data.BlockType;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
-import java.util.Map;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.cloudburstmc.math.vector.Vector3i;
 
+import java.util.Map;
+
+@Slf4j
 @RequiredArgsConstructor
-public class BuildSchematicController {
-  private final Map<Vector3i, BlockType> blocks;
+public final class BuildSchematicController {
+  private final Map<Vector3i, BlockType> absoluteBlocks;
 
   public BuildSchematicController(Map<Vector3i, BlockType> relativeBlocks, Vector3i base) {
     this(new Object2ObjectOpenHashMap<>());
 
     for (var entry : relativeBlocks.entrySet()) {
-      this.blocks.put(entry.getKey().add(base), entry.getValue());
+      this.absoluteBlocks.put(entry.getKey().add(base), entry.getValue());
     }
   }
 }

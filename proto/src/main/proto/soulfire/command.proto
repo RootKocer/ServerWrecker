@@ -1,0 +1,48 @@
+syntax = "proto3";
+
+option java_package = "com.soulfiremc.grpc.generated";
+option java_multiple_files = true;
+
+package soulfire.v1;
+
+message GlobalCommandScope {
+}
+
+message InstanceCommandScope {
+  string instance_id = 1;
+}
+
+message CommandRequest {
+  oneof scope {
+    GlobalCommandScope global = 1;
+    InstanceCommandScope instance = 2;
+  }
+  string command = 3;
+}
+
+message CommandResponse {
+  int32 code = 1;
+}
+
+message CommandCompletionRequest {
+  oneof scope {
+    GlobalCommandScope global = 1;
+    InstanceCommandScope instance = 2;
+  }
+  string command = 3;
+  int32 cursor = 4;
+}
+
+message CommandCompletion {
+  string suggestion = 1;
+  optional string tooltip = 2;
+}
+
+message CommandCompletionResponse {
+  repeated CommandCompletion suggestions = 1;
+}
+
+service CommandService {
+  rpc executeCommand(CommandRequest) returns (CommandResponse);
+  rpc tabCompleteCommand(CommandCompletionRequest) returns (CommandCompletionResponse);
+}

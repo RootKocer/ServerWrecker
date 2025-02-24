@@ -15,7 +15,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-package com.soulfiremc.data;
+package com.soulfiremc.server.data;
 
 import lombok.AccessLevel;
 import lombok.With;
@@ -51,5 +51,10 @@ public record FluidType(int id, Key key) implements RegistryValue<FluidType> {
   @Override
   public int hashCode() {
     return id;
+  }
+
+  @Override
+  public Registry<FluidType> registry() {
+    return REGISTRY;
   }
 }

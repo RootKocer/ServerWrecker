@@ -15,7 +15,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-package com.soulfiremc.data;
+package com.soulfiremc.server.data;
 
 import lombok.AccessLevel;
 import lombok.With;
@@ -51,6 +51,11 @@ public record EffectType(int id, Key key, EffectCategory category, boolean benef
   @Override
   public int hashCode() {
     return id;
+  }
+
+  @Override
+  public Registry<EffectType> registry() {
+    return REGISTRY;
   }
 
   public enum EffectCategory {

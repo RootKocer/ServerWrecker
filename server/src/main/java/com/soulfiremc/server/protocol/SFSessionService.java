@@ -17,23 +17,18 @@
  */
 package com.soulfiremc.server.protocol;
 
+import com.soulfiremc.server.account.AuthType;
+import com.soulfiremc.server.proxy.SFProxy;
+import com.soulfiremc.server.util.ReactorHttpHelper;
 import com.soulfiremc.server.util.UUIDHelper;
-import com.soulfiremc.settings.account.AuthType;
-import com.soulfiremc.settings.proxy.SFProxy;
-import com.soulfiremc.util.GsonInstance;
-import com.soulfiremc.util.ReactorHttpHelper;
+import com.soulfiremc.server.util.structs.GsonInstance;
 import io.netty.handler.codec.http.HttpStatusClass;
-import java.math.BigInteger;
-import java.net.URI;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.security.PublicKey;
-import java.util.UUID;
-import javax.crypto.SecretKey;
 import lombok.AllArgsConstructor;
 import reactor.core.publisher.Flux;
 import reactor.netty.ByteBufFlux;
+
+import java.net.URI;
+import java.util.UUID;
 
 public class SFSessionService {
   private static final URI MOJANG_JOIN_URI =
@@ -43,32 +38,17 @@ public class SFSessionService {
   private static final URI THE_ALTENING_JOIN_URI =
     URI.create("http://sessionserver.thealtening.com/session/minecraft/join");
 
-  private static final URI EASYMC_JOIN_URI =
-    URI.create("https://sessionserver.easymc.io/session/minecraft/join");
   private final URI joinEndpoint;
   private final SFProxy proxyData;
 
   public SFSessionService(AuthType authType, SFProxy proxyData) {
     this.joinEndpoint =
       switch (authType) {
-        case MICROSOFT_JAVA -> MOJANG_JOIN_URI;
+        case MICROSOFT_JAVA_CREDENTIALS, MICROSOFT_JAVA_DEVICE_CODE, MICROSOFT_JAVA_REFRESH_TOKEN -> MOJANG_JOIN_URI;
         case THE_ALTENING -> THE_ALTENING_JOIN_URI;
-        case EASY_MC -> EASYMC_JOIN_URI;
-        default -> throw new IllegalStateException("Unexpected value: " + authType);
+        case OFFLINE, MICROSOFT_BEDROCK_CREDENTIALS, MICROSOFT_BEDROCK_DEVICE_CODE -> throw new IllegalArgumentException("Invalid auth type");
       };
     this.proxyData = proxyData;
-  }
-
-  public static String getServerId(String base, PublicKey publicKey, SecretKey secretKey) {
-    try {
-      var digest = MessageDigest.getInstance("SHA-1");
-      digest.update(base.getBytes(StandardCharsets.ISO_8859_1));
-      digest.update(secretKey.getEncoded());
-      digest.update(publicKey.getEncoded());
-      return new BigInteger(digest.digest()).toString(16);
-    } catch (NoSuchAlgorithmException e) {
-      throw new IllegalStateException("Server ID hash algorithm unavailable.", e);
-    }
   }
 
   public void joinServer(UUID profileId, String authenticationToken, String serverId) {
@@ -79,7 +59,7 @@ public class SFSessionService {
         ByteBufFlux.fromString(
           Flux.just(
             GsonInstance.GSON.toJson(
-              new SFSessionService.JoinServerRequest(
+              new JoinServerRequest(
                 authenticationToken,
                 UUIDHelper.convertToNoDashes(profileId),
                 serverId)))))

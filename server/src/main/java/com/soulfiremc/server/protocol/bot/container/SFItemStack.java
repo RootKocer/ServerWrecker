@@ -18,24 +18,22 @@
 package com.soulfiremc.server.protocol.bot.container;
 
 import com.soulfiremc.server.data.ItemType;
-import java.util.HashMap;
+import com.soulfiremc.server.util.MathHelper;
 import lombok.Getter;
 import org.geysermc.mcprotocollib.protocol.data.game.item.ItemStack;
 import org.geysermc.mcprotocollib.protocol.data.game.item.component.DataComponent;
 import org.geysermc.mcprotocollib.protocol.data.game.item.component.DataComponentType;
-import org.geysermc.mcprotocollib.protocol.data.game.item.component.DataComponents;
+import org.geysermc.mcprotocollib.protocol.data.game.item.component.DataComponentTypes;
+import org.jetbrains.annotations.VisibleForTesting;
+
+import java.util.HashMap;
 
 @Getter
 public class SFItemStack extends ItemStack {
   private final ItemType type;
 
-  private SFItemStack(SFItemStack clone, int amount) {
-    super(clone.getId(), amount, clone.getDataComponents());
-    this.type = clone.type;
-  }
-
   private SFItemStack(ItemStack itemStack) {
-    super(itemStack.getId(), itemStack.getAmount(), itemStack.getDataComponents());
+    super(itemStack.getId(), itemStack.getAmount(), itemStack.getDataComponentsPatch());
     this.type = ItemType.REGISTRY.getById(itemStack.getId());
   }
 
@@ -52,32 +50,27 @@ public class SFItemStack extends ItemStack {
     return new SFItemStack(itemStack);
   }
 
+  @VisibleForTesting
   public static SFItemStack forTypeSingle(ItemType itemType) {
-    return new SFItemStack(itemType, 1);
+    return forTypeWithAmount(itemType, 1);
   }
 
-  @Deprecated
-  @Override
-  @SuppressWarnings("DeprecatedIsStillUsed")
-  public DataComponents getDataComponents() {
-    return super.getDataComponents();
+  @VisibleForTesting
+  public static SFItemStack forTypeWithAmount(ItemType itemType, int amount) {
+    return new SFItemStack(itemType, amount);
   }
 
-  public SFDataComponents components() {
+  public SFDataComponents getDataComponents() {
     var internalMap = new HashMap<DataComponentType<?>, DataComponent<?, ?>>();
     var newComponents = new SFDataComponents(internalMap);
     internalMap.putAll(type.components().components());
 
-    var overrideComponents = super.getDataComponents();
+    var overrideComponents = super.getDataComponentsPatch();
     if (overrideComponents != null) {
       internalMap.putAll(overrideComponents.getDataComponents());
     }
 
     return newComponents;
-  }
-
-  public SFItemStack withAmount(int amount) {
-    return new SFItemStack(this, amount);
   }
 
   public boolean canStackWith(SFItemStack other) {
@@ -86,5 +79,49 @@ public class SFItemStack extends ItemStack {
     }
 
     return this.type == other.type;
+  }
+
+  public boolean has(DataComponentType<?> component) {
+    return getDataComponents().getOptional(component).isPresent();
+  }
+
+  public <T> T get(DataComponentType<T> component) {
+    return getDataComponents().get(component);
+  }
+
+  public <T> T getOrDefault(DataComponentType<T> component, T defaultValue) {
+    return getDataComponents().getOptional(component).orElse(defaultValue);
+  }
+
+  public int getMaxStackSize() {
+    return this.getOrDefault(DataComponentTypes.MAX_STACK_SIZE, 1);
+  }
+
+  public boolean isStackable() {
+    return this.getMaxStackSize() > 1 && (!this.isDamageableItem() || !this.isDamaged());
+  }
+
+  public boolean isDamageableItem() {
+    return this.has(DataComponentTypes.MAX_DAMAGE) && !this.has(DataComponentTypes.UNBREAKABLE) && this.has(DataComponentTypes.DAMAGE);
+  }
+
+  public boolean isDamaged() {
+    return this.isDamageableItem() && this.getDamageValue() > 0;
+  }
+
+  public int getDamageValue() {
+    return MathHelper.clamp(this.getOrDefault(DataComponentTypes.DAMAGE, 0), 0, this.getMaxDamage());
+  }
+
+  public int getMaxDamage() {
+    return this.getOrDefault(DataComponentTypes.MAX_DAMAGE, 0);
+  }
+
+  public boolean isBroken() {
+    return this.isDamageableItem() && this.getDamageValue() >= this.getMaxDamage();
+  }
+
+  public boolean nextDamageWillBreak() {
+    return this.isDamageableItem() && this.getDamageValue() >= this.getMaxDamage() - 1;
   }
 }

@@ -1,5 +1,29 @@
 plugins {
   base
+  id("io.freefair.javadoc-utf-8")
+  id("io.freefair.aggregate-javadoc")
+}
+
+dependencies {
+  javadocClasspath("org.projectlombok:lombok:1.18.36")
+  javadocClasspath(libs.immutables)
+
+  rootProject.subprojects.forEach { subproject ->
+    if (subproject.name == "data-generator") {
+      return@forEach
+    }
+
+    subproject.plugins.withId("java") {
+      javadoc(subproject)
+    }
+  }
+}
+
+tasks {
+  javadoc {
+    title = "SoulFire Javadocs"
+    (options as StandardJavadocDocletOptions).addStringOption("Xdoclint:none", "-quiet")
+  }
 }
 
 allprojects {
@@ -9,32 +33,17 @@ allprojects {
 
   repositories {
     mavenCentral()
-    maven("https://repo.opencollab.dev/maven-releases") {
-      name = "OpenCollab Releases"
-    }
-    maven("https://repo.opencollab.dev/maven-snapshots") {
-      name = "OpenCollab Snapshots"
-    }
-    maven("https://repo.papermc.io/repository/maven-public/") {
-      name = "PaperMC Repository"
-    }
-    maven("https://repo.viaversion.com/") {
-      name = "ViaVersion Repository"
-    }
-    maven("https://maven.lenni0451.net/everything") {
-      name = "Lenni0451"
-    }
     maven("https://oss.sonatype.org/content/repositories/snapshots/") {
       name = "Sonatype Repository"
     }
-    maven("https://jitpack.io/") {
-      name = "JitPack Repository"
+    maven("https://repo.pistonmaster.net/releases") {
+      name = "PistonDev Release Repository"
     }
-    maven("https://repo.spring.io/milestone") {
-      name = "Spring Milestone Repository"
+    maven("https://repo.pistonmaster.net/snapshots") {
+      name = "PistonDev Snapshots Repository"
     }
-    maven("https://repo.spring.io/snapshot") {
-      name = "Spring Snapshot Repository"
+    maven("https://repo.pistonmaster.net/extras") {
+      name = "PistonDev Extras Repository"
     }
   }
 }

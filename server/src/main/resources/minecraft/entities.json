@@ -1,1513 +1,3682 @@
 [
   {
     "id": 0,
+    "key": "minecraft:acacia_boat",
+    "dimensions": {
+      "width": 1.375,
+      "height": 0.5625,
+      "eyeHeight": 0.5625
+    },
+    "updateInterval": 3,
+    "clientTrackingRange": 10,
+    "category": "misc",
+    "friendly": true,
+    "summonable": true,
+    "attackable": true,
+    "boatEntity": true,
+    "inheritedClasses": [
+      "boat",
+      "abstract_boat",
+      "vehicle_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAEACQEBCgMAAAAACwgADAgADQEA/w=="
+  },
+  {
+    "id": 1,
+    "key": "minecraft:acacia_chest_boat",
+    "dimensions": {
+      "width": 1.375,
+      "height": 0.5625,
+      "eyeHeight": 0.5625
+    },
+    "updateInterval": 3,
+    "clientTrackingRange": 10,
+    "category": "misc",
+    "friendly": true,
+    "summonable": true,
+    "attackable": true,
+    "boatEntity": true,
+    "inheritedClasses": [
+      "chest_boat",
+      "abstract_chest_boat",
+      "abstract_boat",
+      "vehicle_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAEACQEBCgMAAAAACwgADAgADQEA/w=="
+  },
+  {
+    "id": 2,
     "key": "minecraft:allay",
-    "width": 0.35,
-    "height": 0.6,
+    "dimensions": {
+      "width": 0.35,
+      "height": 0.6,
+      "eyeHeight": 0.36
+    },
     "updateInterval": 2,
     "clientTrackingRange": 8,
     "category": "creature",
     "friendly": true,
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "defaultFollowRange": 16.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "allay",
+      "pathfinder_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAAEAgAEQgB/w=="
   },
   {
-    "id": 1,
+    "id": 3,
     "key": "minecraft:area_effect_cloud",
-    "width": 6.0,
-    "height": 0.5,
+    "dimensions": {
+      "width": 6.0,
+      "height": 0.5,
+      "eyeHeight": 0.425
+    },
     "updateInterval": 2147483647,
     "clientTrackingRange": 10,
     "category": "misc",
     "friendly": true,
     "summonable": true,
-    "attackable": true
+    "fireImmune": true,
+    "attackable": true,
+    "inheritedClasses": [
+      "area_effect_cloud",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACANAQAAACQgAChEU//////8="
   },
   {
-    "id": 2,
+    "id": 4,
     "key": "minecraft:armadillo",
-    "width": 0.7,
-    "height": 0.65,
+    "dimensions": {
+      "width": 0.7,
+      "height": 0.65,
+      "eyeHeight": 0.26
+    },
     "updateInterval": 3,
     "clientTrackingRange": 10,
     "category": "creature",
     "friendly": true,
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "defaultFollowRange": 16.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "armadillo",
+      "animal",
+      "ageable_mob",
+      "pathfinder_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAAEAgAERwA/w=="
   },
   {
-    "id": 3,
+    "id": 5,
     "key": "minecraft:armor_stand",
-    "width": 0.5,
-    "height": 1.975,
+    "dimensions": {
+      "width": 0.5,
+      "height": 1.975,
+      "eyeHeight": 1.7775
+    },
     "updateInterval": 3,
     "clientTrackingRange": 10,
     "category": "misc",
     "friendly": true,
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "armor_stand",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAAEAkAAAAAAAAAAAAAAAARCQAAAAAAAAAAAAAAABIJwSAAAAAAAADBIAAAEwnBcAAAAAAAAEEgAAAUCb+AAAAAAAAAv4AAABUJP4AAAAAAAAA/gAAA/w=="
   },
   {
-    "id": 4,
+    "id": 6,
     "key": "minecraft:arrow",
-    "width": 0.5,
-    "height": 0.5,
+    "dimensions": {
+      "width": 0.5,
+      "height": 0.5,
+      "eyeHeight": 0.13
+    },
     "updateInterval": 20,
     "clientTrackingRange": 4,
     "category": "misc",
     "friendly": true,
-    "summonable": true
+    "summonable": true,
+    "inheritedClasses": [
+      "arrow",
+      "abstract_arrow",
+      "projectile",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQAACggACwH/////D/8="
   },
   {
-    "id": 5,
+    "id": 7,
     "key": "minecraft:axolotl",
-    "width": 0.75,
-    "height": 0.42,
+    "dimensions": {
+      "width": 0.75,
+      "height": 0.42,
+      "eyeHeight": 0.2751
+    },
     "updateInterval": 3,
     "clientTrackingRange": 10,
     "category": "axolotls",
     "friendly": true,
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "defaultFollowRange": 16.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "axolotl",
+      "animal",
+      "ageable_mob",
+      "pathfinder_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAfAuAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAAEAgAEQEAEggAEwgA/w=="
   },
   {
-    "id": 6,
+    "id": 8,
+    "key": "minecraft:bamboo_chest_raft",
+    "dimensions": {
+      "width": 1.375,
+      "height": 0.5625,
+      "eyeHeight": 0.5625
+    },
+    "updateInterval": 3,
+    "clientTrackingRange": 10,
+    "category": "misc",
+    "friendly": true,
+    "summonable": true,
+    "attackable": true,
+    "boatEntity": true,
+    "inheritedClasses": [
+      "chest_raft",
+      "abstract_chest_boat",
+      "abstract_boat",
+      "vehicle_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAEACQEBCgMAAAAACwgADAgADQEA/w=="
+  },
+  {
+    "id": 9,
+    "key": "minecraft:bamboo_raft",
+    "dimensions": {
+      "width": 1.375,
+      "height": 0.5625,
+      "eyeHeight": 0.5625
+    },
+    "updateInterval": 3,
+    "clientTrackingRange": 10,
+    "category": "misc",
+    "friendly": true,
+    "summonable": true,
+    "attackable": true,
+    "boatEntity": true,
+    "inheritedClasses": [
+      "raft",
+      "abstract_boat",
+      "vehicle_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAEACQEBCgMAAAAACwgADAgADQEA/w=="
+  },
+  {
+    "id": 10,
     "key": "minecraft:bat",
-    "width": 0.5,
-    "height": 0.9,
+    "dimensions": {
+      "width": 0.5,
+      "height": 0.9,
+      "eyeHeight": 0.45
+    },
     "updateInterval": 3,
     "clientTrackingRange": 5,
     "category": "ambient",
     "friendly": true,
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "defaultFollowRange": 16.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "bat",
+      "ambient_creature",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAAEAAA/w=="
   },
   {
-    "id": 7,
+    "id": 11,
     "key": "minecraft:bee",
-    "width": 0.7,
-    "height": 0.6,
+    "dimensions": {
+      "width": 0.7,
+      "height": 0.6,
+      "eyeHeight": 0.3
+    },
     "updateInterval": 3,
     "clientTrackingRange": 8,
     "category": "creature",
     "friendly": true,
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "defaultFollowRange": 16.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "bee",
+      "animal",
+      "ageable_mob",
+      "pathfinder_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAAEAgAEQAAEgEA/w=="
   },
   {
-    "id": 8,
+    "id": 12,
+    "key": "minecraft:birch_boat",
+    "dimensions": {
+      "width": 1.375,
+      "height": 0.5625,
+      "eyeHeight": 0.5625
+    },
+    "updateInterval": 3,
+    "clientTrackingRange": 10,
+    "category": "misc",
+    "friendly": true,
+    "summonable": true,
+    "attackable": true,
+    "boatEntity": true,
+    "inheritedClasses": [
+      "boat",
+      "abstract_boat",
+      "vehicle_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAEACQEBCgMAAAAACwgADAgADQEA/w=="
+  },
+  {
+    "id": 13,
+    "key": "minecraft:birch_chest_boat",
+    "dimensions": {
+      "width": 1.375,
+      "height": 0.5625,
+      "eyeHeight": 0.5625
+    },
+    "updateInterval": 3,
+    "clientTrackingRange": 10,
+    "category": "misc",
+    "friendly": true,
+    "summonable": true,
+    "attackable": true,
+    "boatEntity": true,
+    "inheritedClasses": [
+      "chest_boat",
+      "abstract_chest_boat",
+      "abstract_boat",
+      "vehicle_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAEACQEBCgMAAAAACwgADAgADQEA/w=="
+  },
+  {
+    "id": 14,
     "key": "minecraft:blaze",
-    "width": 0.6,
-    "height": 1.8,
+    "dimensions": {
+      "width": 0.6,
+      "height": 1.8,
+      "eyeHeight": 1.53
+    },
     "updateInterval": 3,
     "clientTrackingRange": 8,
     "category": "monster",
     "summonable": true,
-    "attackable": true
+    "fireImmune": true,
+    "attackable": true,
+    "defaultFollowRange": 48.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "blaze",
+      "monster",
+      "pathfinder_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAAEAAA/w=="
   },
   {
-    "id": 9,
+    "id": 15,
     "key": "minecraft:block_display",
-    "width": 0.0,
-    "height": 0.0,
+    "dimensions": {
+      "width": 0.0,
+      "height": 0.0,
+      "eyeHeight": 0.0
+    },
     "updateInterval": 1,
     "clientTrackingRange": 10,
     "category": "misc",
     "friendly": true,
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "inheritedClasses": [
+      "block_display",
+      "display",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAEACQEACgEACx0AAAAAAAAAAAAAAAAMHT+AAAA/gAAAP4AAAA0eAAAAAAAAAAAAAAAAP4AAAA4eAAAAAAAAAAAAAAAAP4AAAA8AABAB/////w8RAz+AAAASAwAAAAATAz+AAAAUAwAAAAAVAwAAAAAWAf////8PFw4A/w=="
   },
   {
-    "id": 10,
-    "key": "minecraft:boat",
-    "width": 1.375,
-    "height": 0.5625,
-    "updateInterval": 3,
-    "clientTrackingRange": 10,
-    "category": "misc",
-    "friendly": true,
-    "summonable": true,
-    "attackable": true
-  },
-  {
-    "id": 11,
+    "id": 16,
     "key": "minecraft:bogged",
-    "width": 0.6,
-    "height": 1.99,
+    "dimensions": {
+      "width": 0.6,
+      "height": 1.99,
+      "eyeHeight": 1.74
+    },
     "updateInterval": 3,
     "clientTrackingRange": 8,
     "category": "monster",
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "defaultFollowRange": 16.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "bogged",
+      "abstract_skeleton",
+      "monster",
+      "pathfinder_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAAEAgA/w=="
   },
   {
-    "id": 12,
+    "id": 17,
     "key": "minecraft:breeze",
-    "width": 0.6,
-    "height": 1.77,
+    "dimensions": {
+      "width": 0.6,
+      "height": 1.77,
+      "eyeHeight": 1.3452
+    },
     "updateInterval": 3,
     "clientTrackingRange": 10,
     "category": "monster",
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "defaultFollowRange": 24.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "breeze",
+      "monster",
+      "pathfinder_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAA/w=="
   },
   {
-    "id": 13,
+    "id": 18,
     "key": "minecraft:breeze_wind_charge",
-    "width": 0.3125,
-    "height": 0.3125,
+    "dimensions": {
+      "width": 0.3125,
+      "height": 0.3125,
+      "eyeHeight": 0.0
+    },
     "updateInterval": 10,
     "clientTrackingRange": 4,
     "category": "misc",
     "friendly": true,
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "windChargeEntity": true,
+    "inheritedClasses": [
+      "breeze_wind_charge",
+      "abstract_wind_charge",
+      "abstract_hurting_projectile",
+      "projectile",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEA/w=="
   },
   {
-    "id": 14,
+    "id": 19,
     "key": "minecraft:camel",
-    "width": 1.7,
-    "height": 2.375,
+    "dimensions": {
+      "width": 1.7,
+      "height": 2.375,
+      "eyeHeight": 2.275
+    },
     "updateInterval": 3,
     "clientTrackingRange": 10,
     "category": "creature",
     "friendly": true,
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "defaultFollowRange": 16.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "camel",
+      "abstract_horse",
+      "animal",
+      "ageable_mob",
+      "pathfinder_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAAEAgAEQAAEggAEwIA/w=="
   },
   {
-    "id": 15,
+    "id": 20,
     "key": "minecraft:cat",
-    "width": 0.6,
-    "height": 0.7,
+    "dimensions": {
+      "width": 0.6,
+      "height": 0.7,
+      "eyeHeight": 0.35
+    },
     "updateInterval": 3,
     "clientTrackingRange": 8,
     "category": "creature",
     "friendly": true,
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "defaultFollowRange": 16.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "cat",
+      "tamable_animal",
+      "animal",
+      "ageable_mob",
+      "pathfinder_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAAEAgAEQAAEg0AExYBFAgAFQgAFgEO/w=="
   },
   {
-    "id": 16,
+    "id": 21,
     "key": "minecraft:cave_spider",
-    "width": 0.7,
-    "height": 0.5,
+    "dimensions": {
+      "width": 0.7,
+      "height": 0.5,
+      "eyeHeight": 0.45
+    },
     "updateInterval": 3,
     "clientTrackingRange": 8,
     "category": "monster",
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "defaultFollowRange": 16.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "cave_spider",
+      "spider",
+      "monster",
+      "pathfinder_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAAEAAA/w=="
   },
   {
-    "id": 17,
-    "key": "minecraft:chest_boat",
-    "width": 1.375,
-    "height": 0.5625,
+    "id": 22,
+    "key": "minecraft:cherry_boat",
+    "dimensions": {
+      "width": 1.375,
+      "height": 0.5625,
+      "eyeHeight": 0.5625
+    },
     "updateInterval": 3,
     "clientTrackingRange": 10,
     "category": "misc",
     "friendly": true,
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "boatEntity": true,
+    "inheritedClasses": [
+      "boat",
+      "abstract_boat",
+      "vehicle_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAEACQEBCgMAAAAACwgADAgADQEA/w=="
   },
   {
-    "id": 18,
+    "id": 23,
+    "key": "minecraft:cherry_chest_boat",
+    "dimensions": {
+      "width": 1.375,
+      "height": 0.5625,
+      "eyeHeight": 0.5625
+    },
+    "updateInterval": 3,
+    "clientTrackingRange": 10,
+    "category": "misc",
+    "friendly": true,
+    "summonable": true,
+    "attackable": true,
+    "boatEntity": true,
+    "inheritedClasses": [
+      "chest_boat",
+      "abstract_chest_boat",
+      "abstract_boat",
+      "vehicle_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAEACQEBCgMAAAAACwgADAgADQEA/w=="
+  },
+  {
+    "id": 24,
     "key": "minecraft:chest_minecart",
-    "width": 0.98,
-    "height": 0.7,
+    "dimensions": {
+      "width": 0.98,
+      "height": 0.7,
+      "eyeHeight": 0.595
+    },
     "updateInterval": 3,
     "clientTrackingRange": 8,
     "category": "misc",
     "friendly": true,
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "minecartEntity": true,
+    "inheritedClasses": [
+      "minecart_chest",
+      "abstract_minecart_container",
+      "abstract_minecart",
+      "vehicle_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAEACQEBCgMAAAAACwEADAEGDQgA/w=="
   },
   {
-    "id": 19,
+    "id": 25,
     "key": "minecraft:chicken",
-    "width": 0.4,
-    "height": 0.7,
+    "dimensions": {
+      "width": 0.4,
+      "height": 0.7,
+      "eyeHeight": 0.644
+    },
     "updateInterval": 3,
     "clientTrackingRange": 10,
     "category": "creature",
     "friendly": true,
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "defaultFollowRange": 16.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "chicken",
+      "animal",
+      "ageable_mob",
+      "pathfinder_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAAEAgA/w=="
   },
   {
-    "id": 20,
+    "id": 26,
     "key": "minecraft:cod",
-    "width": 0.5,
-    "height": 0.3,
+    "dimensions": {
+      "width": 0.5,
+      "height": 0.3,
+      "eyeHeight": 0.195
+    },
     "updateInterval": 3,
     "clientTrackingRange": 4,
     "category": "water_ambient",
     "friendly": true,
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "defaultFollowRange": 16.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "cod",
+      "abstract_schooling_fish",
+      "abstract_fish",
+      "water_animal",
+      "pathfinder_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAAEAgA/w=="
   },
   {
-    "id": 21,
+    "id": 27,
     "key": "minecraft:command_block_minecart",
-    "width": 0.98,
-    "height": 0.7,
+    "dimensions": {
+      "width": 0.98,
+      "height": 0.7,
+      "eyeHeight": 0.595
+    },
     "updateInterval": 3,
     "clientTrackingRange": 8,
     "category": "misc",
     "friendly": true,
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "minecartEntity": true,
+    "inheritedClasses": [
+      "minecart_command_block",
+      "abstract_minecart",
+      "vehicle_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAEACQEBCgMAAAAACwEADAEGDQgADgQADwUIAAD/"
   },
   {
-    "id": 22,
+    "id": 28,
     "key": "minecraft:cow",
-    "width": 0.9,
-    "height": 1.4,
+    "dimensions": {
+      "width": 0.9,
+      "height": 1.4,
+      "eyeHeight": 1.3
+    },
     "updateInterval": 3,
     "clientTrackingRange": 10,
     "category": "creature",
     "friendly": true,
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "defaultFollowRange": 16.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "cow",
+      "animal",
+      "ageable_mob",
+      "pathfinder_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAAEAgA/w=="
   },
   {
-    "id": 23,
-    "key": "minecraft:creeper",
-    "width": 0.6,
-    "height": 1.7,
+    "id": 29,
+    "key": "minecraft:creaking",
+    "dimensions": {
+      "width": 0.9,
+      "height": 2.7,
+      "eyeHeight": 2.3
+    },
     "updateInterval": 3,
     "clientTrackingRange": 8,
     "category": "monster",
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "defaultFollowRange": 32.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "creaking",
+      "monster",
+      "pathfinder_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAAEAgBEQgAEggAEwsA/w=="
   },
   {
-    "id": 24,
+    "id": 30,
+    "key": "minecraft:creeper",
+    "dimensions": {
+      "width": 0.6,
+      "height": 1.7,
+      "eyeHeight": 1.445
+    },
+    "updateInterval": 3,
+    "clientTrackingRange": 8,
+    "category": "monster",
+    "summonable": true,
+    "attackable": true,
+    "defaultFollowRange": 16.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "creeper",
+      "monster",
+      "pathfinder_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAAEAH/////DxEIABIIAP8="
+  },
+  {
+    "id": 31,
+    "key": "minecraft:dark_oak_boat",
+    "dimensions": {
+      "width": 1.375,
+      "height": 0.5625,
+      "eyeHeight": 0.5625
+    },
+    "updateInterval": 3,
+    "clientTrackingRange": 10,
+    "category": "misc",
+    "friendly": true,
+    "summonable": true,
+    "attackable": true,
+    "boatEntity": true,
+    "inheritedClasses": [
+      "boat",
+      "abstract_boat",
+      "vehicle_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAEACQEBCgMAAAAACwgADAgADQEA/w=="
+  },
+  {
+    "id": 32,
+    "key": "minecraft:dark_oak_chest_boat",
+    "dimensions": {
+      "width": 1.375,
+      "height": 0.5625,
+      "eyeHeight": 0.5625
+    },
+    "updateInterval": 3,
+    "clientTrackingRange": 10,
+    "category": "misc",
+    "friendly": true,
+    "summonable": true,
+    "attackable": true,
+    "boatEntity": true,
+    "inheritedClasses": [
+      "chest_boat",
+      "abstract_chest_boat",
+      "abstract_boat",
+      "vehicle_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAEACQEBCgMAAAAACwgADAgADQEA/w=="
+  },
+  {
+    "id": 33,
     "key": "minecraft:dolphin",
-    "width": 0.9,
-    "height": 0.6,
+    "dimensions": {
+      "width": 0.9,
+      "height": 0.6,
+      "eyeHeight": 0.3
+    },
     "updateInterval": 3,
     "clientTrackingRange": 5,
     "category": "water_creature",
     "friendly": true,
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "defaultFollowRange": 16.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "dolphin",
+      "ageable_water_creature",
+      "ageable_mob",
+      "pathfinder_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAcAlAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAAEAgAEQoAAAAAAAAAABIIABMB4BL/"
   },
   {
-    "id": 25,
+    "id": 34,
     "key": "minecraft:donkey",
-    "width": 1.3964844,
-    "height": 1.5,
+    "dimensions": {
+      "width": 1.3964844,
+      "height": 1.5,
+      "eyeHeight": 1.425
+    },
     "updateInterval": 3,
     "clientTrackingRange": 10,
     "category": "creature",
     "friendly": true,
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "defaultFollowRange": 16.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "donkey",
+      "abstract_chested_horse",
+      "abstract_horse",
+      "animal",
+      "ageable_mob",
+      "pathfinder_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAAEAgAEQAAEggA/w=="
   },
   {
-    "id": 26,
+    "id": 35,
     "key": "minecraft:dragon_fireball",
-    "width": 1.0,
-    "height": 1.0,
+    "dimensions": {
+      "width": 1.0,
+      "height": 1.0,
+      "eyeHeight": 0.85
+    },
     "updateInterval": 10,
     "clientTrackingRange": 4,
     "category": "misc",
     "friendly": true,
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "inheritedClasses": [
+      "dragon_fireball",
+      "abstract_hurting_projectile",
+      "projectile",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEA/w=="
   },
   {
-    "id": 27,
+    "id": 36,
     "key": "minecraft:drowned",
-    "width": 0.6,
-    "height": 1.95,
+    "dimensions": {
+      "width": 0.6,
+      "height": 1.95,
+      "eyeHeight": 1.74
+    },
     "updateInterval": 3,
     "clientTrackingRange": 8,
     "category": "monster",
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "defaultFollowRange": 35.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "drowned",
+      "zombie",
+      "monster",
+      "pathfinder_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAAEAgAEQEAEggA/w=="
   },
   {
-    "id": 28,
+    "id": 37,
     "key": "minecraft:egg",
-    "width": 0.25,
-    "height": 0.25,
+    "dimensions": {
+      "width": 0.25,
+      "height": 0.25,
+      "eyeHeight": 0.2125
+    },
     "updateInterval": 10,
     "clientTrackingRange": 4,
     "category": "misc",
     "friendly": true,
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "inheritedClasses": [
+      "thrown_egg",
+      "throwable_item_projectile",
+      "throwable_projectile",
+      "projectile",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAcBwAcAAP8="
   },
   {
-    "id": 29,
+    "id": 38,
     "key": "minecraft:elder_guardian",
-    "width": 1.9975,
-    "height": 1.9975,
+    "dimensions": {
+      "width": 1.9975,
+      "height": 1.9975,
+      "eyeHeight": 0.99875
+    },
     "updateInterval": 3,
     "clientTrackingRange": 10,
     "category": "monster",
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "defaultFollowRange": 16.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "elder_guardian",
+      "guardian",
+      "monster",
+      "pathfinder_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAAEAgAEQEA/w=="
   },
   {
-    "id": 30,
+    "id": 39,
+    "key": "minecraft:enderman",
+    "dimensions": {
+      "width": 0.6,
+      "height": 2.9,
+      "eyeHeight": 2.55
+    },
+    "updateInterval": 3,
+    "clientTrackingRange": 8,
+    "category": "monster",
+    "summonable": true,
+    "attackable": true,
+    "defaultFollowRange": 64.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "ender_man",
+      "monster",
+      "pathfinder_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAAEA8AEQgAEggA/w=="
+  },
+  {
+    "id": 40,
+    "key": "minecraft:endermite",
+    "dimensions": {
+      "width": 0.4,
+      "height": 0.3,
+      "eyeHeight": 0.13
+    },
+    "updateInterval": 3,
+    "clientTrackingRange": 8,
+    "category": "monster",
+    "summonable": true,
+    "attackable": true,
+    "defaultFollowRange": 16.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "endermite",
+      "monster",
+      "pathfinder_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAA/w=="
+  },
+  {
+    "id": 41,
+    "key": "minecraft:ender_dragon",
+    "dimensions": {
+      "width": 16.0,
+      "height": 8.0,
+      "eyeHeight": 6.8
+    },
+    "updateInterval": 3,
+    "clientTrackingRange": 10,
+    "category": "monster",
+    "summonable": true,
+    "fireImmune": true,
+    "attackable": true,
+    "defaultFollowRange": 16.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "ender_dragon",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAAEAEK/w=="
+  },
+  {
+    "id": 42,
+    "key": "minecraft:ender_pearl",
+    "dimensions": {
+      "width": 0.25,
+      "height": 0.25,
+      "eyeHeight": 0.2125
+    },
+    "updateInterval": 10,
+    "clientTrackingRange": 4,
+    "category": "misc",
+    "friendly": true,
+    "summonable": true,
+    "attackable": true,
+    "inheritedClasses": [
+      "thrown_enderpearl",
+      "throwable_item_projectile",
+      "throwable_projectile",
+      "projectile",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAcBkggAAP8="
+  },
+  {
+    "id": 43,
     "key": "minecraft:end_crystal",
-    "width": 2.0,
-    "height": 2.0,
+    "dimensions": {
+      "width": 2.0,
+      "height": 2.0,
+      "eyeHeight": 1.7
+    },
     "updateInterval": 2147483647,
     "clientTrackingRange": 16,
     "category": "misc",
     "friendly": true,
     "summonable": true,
-    "attackable": true
+    "fireImmune": true,
+    "attackable": true,
+    "inheritedClasses": [
+      "end_crystal",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAsACQgB/w=="
   },
   {
-    "id": 31,
-    "key": "minecraft:ender_dragon",
-    "width": 16.0,
-    "height": 8.0,
-    "updateInterval": 3,
-    "clientTrackingRange": 10,
-    "category": "monster",
-    "summonable": true,
-    "attackable": true
-  },
-  {
-    "id": 32,
-    "key": "minecraft:ender_pearl",
-    "width": 0.25,
-    "height": 0.25,
-    "updateInterval": 10,
-    "clientTrackingRange": 4,
-    "category": "misc",
-    "friendly": true,
-    "summonable": true,
-    "attackable": true
-  },
-  {
-    "id": 33,
-    "key": "minecraft:enderman",
-    "width": 0.6,
-    "height": 2.9,
-    "updateInterval": 3,
-    "clientTrackingRange": 8,
-    "category": "monster",
-    "summonable": true,
-    "attackable": true
-  },
-  {
-    "id": 34,
-    "key": "minecraft:endermite",
-    "width": 0.4,
-    "height": 0.3,
-    "updateInterval": 3,
-    "clientTrackingRange": 8,
-    "category": "monster",
-    "summonable": true,
-    "attackable": true
-  },
-  {
-    "id": 35,
+    "id": 44,
     "key": "minecraft:evoker",
-    "width": 0.6,
-    "height": 1.95,
+    "dimensions": {
+      "width": 0.6,
+      "height": 1.95,
+      "eyeHeight": 1.6575
+    },
     "updateInterval": 3,
     "clientTrackingRange": 8,
     "category": "monster",
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "defaultFollowRange": 12.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "evoker",
+      "spellcaster_illager",
+      "abstract_illager",
+      "raider",
+      "patrolling_monster",
+      "monster",
+      "pathfinder_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAAEAgAEQAA/w=="
   },
   {
-    "id": 36,
+    "id": 45,
     "key": "minecraft:evoker_fangs",
-    "width": 0.5,
-    "height": 0.8,
+    "dimensions": {
+      "width": 0.5,
+      "height": 0.8,
+      "eyeHeight": 0.68
+    },
     "updateInterval": 2,
     "clientTrackingRange": 6,
     "category": "misc",
     "friendly": true,
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "inheritedClasses": [
+      "evoker_fangs",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEA/w=="
   },
   {
-    "id": 37,
+    "id": 46,
     "key": "minecraft:experience_bottle",
-    "width": 0.25,
-    "height": 0.25,
+    "dimensions": {
+      "width": 0.25,
+      "height": 0.25,
+      "eyeHeight": 0.2125
+    },
     "updateInterval": 10,
     "clientTrackingRange": 4,
     "category": "misc",
     "friendly": true,
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "inheritedClasses": [
+      "thrown_experience_bottle",
+      "throwable_item_projectile",
+      "throwable_projectile",
+      "projectile",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAcB8ggAAP8="
   },
   {
-    "id": 38,
+    "id": 47,
     "key": "minecraft:experience_orb",
-    "width": 0.5,
-    "height": 0.5,
+    "dimensions": {
+      "width": 0.5,
+      "height": 0.5,
+      "eyeHeight": 0.425
+    },
     "updateInterval": 20,
     "clientTrackingRange": 6,
     "category": "misc",
     "friendly": true,
-    "summonable": true
+    "summonable": true,
+    "inheritedClasses": [
+      "experience_orb",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEA/w=="
   },
   {
-    "id": 39,
+    "id": 48,
     "key": "minecraft:eye_of_ender",
-    "width": 0.25,
-    "height": 0.25,
+    "dimensions": {
+      "width": 0.25,
+      "height": 0.25,
+      "eyeHeight": 0.2125
+    },
     "updateInterval": 4,
     "clientTrackingRange": 4,
     "category": "misc",
     "friendly": true,
-    "summonable": true
+    "summonable": true,
+    "inheritedClasses": [
+      "eye_of_ender",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAcBnwgAAP8="
   },
   {
-    "id": 40,
+    "id": 49,
     "key": "minecraft:falling_block",
-    "width": 0.98,
-    "height": 0.98,
+    "dimensions": {
+      "width": 0.98,
+      "height": 0.98,
+      "eyeHeight": 0.83300006
+    },
     "updateInterval": 20,
     "clientTrackingRange": 10,
     "category": "misc",
     "friendly": true,
-    "summonable": true
+    "summonable": true,
+    "inheritedClasses": [
+      "falling_block_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAoAAAAAAAAAAP8="
   },
   {
-    "id": 41,
-    "key": "minecraft:firework_rocket",
-    "width": 0.25,
-    "height": 0.25,
+    "id": 50,
+    "key": "minecraft:fireball",
+    "dimensions": {
+      "width": 1.0,
+      "height": 1.0,
+      "eyeHeight": 0.85
+    },
     "updateInterval": 10,
     "clientTrackingRange": 4,
     "category": "misc",
     "friendly": true,
-    "summonable": true
+    "summonable": true,
+    "attackable": true,
+    "inheritedClasses": [
+      "large_fireball",
+      "fireball",
+      "abstract_hurting_projectile",
+      "projectile",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAcB8wgAAP8="
   },
   {
-    "id": 42,
+    "id": 51,
+    "key": "minecraft:firework_rocket",
+    "dimensions": {
+      "width": 0.25,
+      "height": 0.25,
+      "eyeHeight": 0.2125
+    },
+    "updateInterval": 10,
+    "clientTrackingRange": 4,
+    "category": "misc",
+    "friendly": true,
+    "summonable": true,
+    "inheritedClasses": [
+      "firework_rocket_entity",
+      "projectile",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAcBiwkAAAkUAAoIAP8="
+  },
+  {
+    "id": 52,
     "key": "minecraft:fox",
-    "width": 0.6,
-    "height": 0.7,
+    "dimensions": {
+      "width": 0.6,
+      "height": 0.7,
+      "eyeHeight": 0.4
+    },
     "updateInterval": 3,
     "clientTrackingRange": 8,
     "category": "creature",
     "friendly": true,
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "defaultFollowRange": 32.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "fox",
+      "animal",
+      "ageable_mob",
+      "pathfinder_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAAEAgAEQEAEgAAEw0AFA0A/w=="
   },
   {
-    "id": 43,
+    "id": 53,
     "key": "minecraft:frog",
-    "width": 0.5,
-    "height": 0.5,
+    "dimensions": {
+      "width": 0.5,
+      "height": 0.5,
+      "eyeHeight": 0.425
+    },
     "updateInterval": 3,
     "clientTrackingRange": 10,
     "category": "creature",
     "friendly": true,
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "defaultFollowRange": 16.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "frog",
+      "animal",
+      "ageable_mob",
+      "pathfinder_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAAEAgAERgAEhQA/w=="
   },
   {
-    "id": 44,
+    "id": 54,
     "key": "minecraft:furnace_minecart",
-    "width": 0.98,
-    "height": 0.7,
+    "dimensions": {
+      "width": 0.98,
+      "height": 0.7,
+      "eyeHeight": 0.595
+    },
     "updateInterval": 3,
     "clientTrackingRange": 8,
     "category": "misc",
     "friendly": true,
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "minecartEntity": true,
+    "inheritedClasses": [
+      "minecart_furnace",
+      "abstract_minecart",
+      "vehicle_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAEACQEBCgMAAAAACwEADAEGDQgADggA/w=="
   },
   {
-    "id": 45,
+    "id": 55,
     "key": "minecraft:ghast",
-    "width": 4.0,
-    "height": 4.0,
+    "dimensions": {
+      "width": 4.0,
+      "height": 4.0,
+      "eyeHeight": 2.6
+    },
     "updateInterval": 3,
     "clientTrackingRange": 10,
     "category": "monster",
     "summonable": true,
-    "attackable": true
+    "fireImmune": true,
+    "attackable": true,
+    "defaultFollowRange": 100.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "ghast",
+      "flying_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAAEAgA/w=="
   },
   {
-    "id": 46,
+    "id": 56,
     "key": "minecraft:giant",
-    "width": 3.6,
-    "height": 12.0,
+    "dimensions": {
+      "width": 3.6,
+      "height": 12.0,
+      "eyeHeight": 10.44
+    },
     "updateInterval": 3,
     "clientTrackingRange": 10,
     "category": "monster",
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "defaultFollowRange": 16.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "giant",
+      "monster",
+      "pathfinder_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAA/w=="
   },
   {
-    "id": 47,
+    "id": 57,
     "key": "minecraft:glow_item_frame",
-    "width": 0.5,
-    "height": 0.5,
+    "dimensions": {
+      "width": 0.5,
+      "height": 0.5,
+      "eyeHeight": 0.0
+    },
     "updateInterval": 2147483647,
     "clientTrackingRange": 10,
     "category": "misc",
     "friendly": true,
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "inheritedClasses": [
+      "glow_item_frame",
+      "item_frame",
+      "hanging_entity",
+      "block_attached_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAcACQEA/w=="
   },
   {
-    "id": 48,
+    "id": 58,
     "key": "minecraft:glow_squid",
-    "width": 0.8,
-    "height": 0.8,
+    "dimensions": {
+      "width": 0.8,
+      "height": 0.8,
+      "eyeHeight": 0.4
+    },
     "updateInterval": 3,
     "clientTrackingRange": 10,
     "category": "underground_water_creature",
     "friendly": true,
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "defaultFollowRange": 16.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "glow_squid",
+      "squid",
+      "ageable_water_creature",
+      "ageable_mob",
+      "pathfinder_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAAEAgAEQEA/w=="
   },
   {
-    "id": 49,
+    "id": 59,
     "key": "minecraft:goat",
-    "width": 0.9,
-    "height": 1.3,
+    "dimensions": {
+      "width": 0.9,
+      "height": 1.3,
+      "eyeHeight": 1.105
+    },
     "updateInterval": 3,
     "clientTrackingRange": 10,
     "category": "creature",
     "friendly": true,
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "defaultFollowRange": 16.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "goat",
+      "animal",
+      "ageable_mob",
+      "pathfinder_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAAEAgAEQgAEggBEwgB/w=="
   },
   {
-    "id": 50,
+    "id": 60,
     "key": "minecraft:guardian",
-    "width": 0.85,
-    "height": 0.85,
+    "dimensions": {
+      "width": 0.85,
+      "height": 0.85,
+      "eyeHeight": 0.425
+    },
     "updateInterval": 3,
     "clientTrackingRange": 8,
     "category": "monster",
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "defaultFollowRange": 16.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "guardian",
+      "monster",
+      "pathfinder_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAAEAgAEQEA/w=="
   },
   {
-    "id": 51,
+    "id": 61,
     "key": "minecraft:hoglin",
-    "width": 1.3964844,
-    "height": 1.4,
+    "dimensions": {
+      "width": 1.3964844,
+      "height": 1.4,
+      "eyeHeight": 1.19
+    },
     "updateInterval": 3,
     "clientTrackingRange": 8,
     "category": "monster",
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "defaultFollowRange": 16.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "hoglin",
+      "animal",
+      "ageable_mob",
+      "pathfinder_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAAEAgAEQgA/w=="
   },
   {
-    "id": 52,
+    "id": 62,
     "key": "minecraft:hopper_minecart",
-    "width": 0.98,
-    "height": 0.7,
+    "dimensions": {
+      "width": 0.98,
+      "height": 0.7,
+      "eyeHeight": 0.595
+    },
     "updateInterval": 3,
     "clientTrackingRange": 8,
     "category": "misc",
     "friendly": true,
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "minecartEntity": true,
+    "inheritedClasses": [
+      "minecart_hopper",
+      "abstract_minecart_container",
+      "abstract_minecart",
+      "vehicle_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAEACQEBCgMAAAAACwEADAEGDQgA/w=="
   },
   {
-    "id": 53,
+    "id": 63,
     "key": "minecraft:horse",
-    "width": 1.3964844,
-    "height": 1.6,
+    "dimensions": {
+      "width": 1.3964844,
+      "height": 1.6,
+      "eyeHeight": 1.52
+    },
     "updateInterval": 3,
     "clientTrackingRange": 10,
     "category": "creature",
     "friendly": true,
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "defaultFollowRange": 16.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "horse",
+      "abstract_horse",
+      "animal",
+      "ageable_mob",
+      "pathfinder_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAAEAgAEQAAEgEA/w=="
   },
   {
-    "id": 54,
+    "id": 64,
     "key": "minecraft:husk",
-    "width": 0.6,
-    "height": 1.95,
+    "dimensions": {
+      "width": 0.6,
+      "height": 1.95,
+      "eyeHeight": 1.74
+    },
     "updateInterval": 3,
     "clientTrackingRange": 8,
     "category": "monster",
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "defaultFollowRange": 35.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "husk",
+      "zombie",
+      "monster",
+      "pathfinder_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAAEAgAEQEAEggA/w=="
   },
   {
-    "id": 55,
+    "id": 65,
     "key": "minecraft:illusioner",
-    "width": 0.6,
-    "height": 1.95,
+    "dimensions": {
+      "width": 0.6,
+      "height": 1.95,
+      "eyeHeight": 1.6575
+    },
     "updateInterval": 3,
     "clientTrackingRange": 8,
     "category": "monster",
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "defaultFollowRange": 18.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "illusioner",
+      "spellcaster_illager",
+      "abstract_illager",
+      "raider",
+      "patrolling_monster",
+      "monster",
+      "pathfinder_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAAEAgAEQAA/w=="
   },
   {
-    "id": 56,
+    "id": 66,
     "key": "minecraft:interaction",
-    "width": 0.0,
-    "height": 0.0,
+    "dimensions": {
+      "width": 0.0,
+      "height": 0.0,
+      "eyeHeight": 0.0
+    },
     "updateInterval": 3,
     "clientTrackingRange": 10,
     "category": "misc",
     "friendly": true,
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "inheritedClasses": [
+      "interaction",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAM/gAAACQM/gAAACggA/w=="
   },
   {
-    "id": 57,
+    "id": 67,
     "key": "minecraft:iron_golem",
-    "width": 1.4,
-    "height": 2.7,
+    "dimensions": {
+      "width": 1.4,
+      "height": 2.7,
+      "eyeHeight": 2.295
+    },
     "updateInterval": 3,
     "clientTrackingRange": 10,
     "category": "misc",
     "friendly": true,
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "defaultFollowRange": 16.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "iron_golem",
+      "abstract_golem",
+      "pathfinder_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAAEAAA/w=="
   },
   {
-    "id": 58,
+    "id": 68,
     "key": "minecraft:item",
-    "width": 0.25,
-    "height": 0.25,
+    "dimensions": {
+      "width": 0.25,
+      "height": 0.25,
+      "eyeHeight": 0.2125
+    },
     "updateInterval": 20,
     "clientTrackingRange": 6,
     "category": "misc",
     "friendly": true,
-    "summonable": true
+    "summonable": true,
+    "inheritedClasses": [
+      "item_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAcA/w=="
   },
   {
-    "id": 59,
+    "id": 69,
     "key": "minecraft:item_display",
-    "width": 0.0,
-    "height": 0.0,
+    "dimensions": {
+      "width": 0.0,
+      "height": 0.0,
+      "eyeHeight": 0.0
+    },
     "updateInterval": 1,
     "clientTrackingRange": 10,
     "category": "misc",
     "friendly": true,
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "inheritedClasses": [
+      "item_display",
+      "display",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAEACQEACgEACx0AAAAAAAAAAAAAAAAMHT+AAAA/gAAAP4AAAA0eAAAAAAAAAAAAAAAAP4AAAA4eAAAAAAAAAAAAAAAAP4AAAA8AABAB/////w8RAz+AAAASAwAAAAATAz+AAAAUAwAAAAAVAwAAAAAWAf////8PFwcAGAAA/w=="
   },
   {
-    "id": 60,
+    "id": 70,
     "key": "minecraft:item_frame",
-    "width": 0.5,
-    "height": 0.5,
+    "dimensions": {
+      "width": 0.5,
+      "height": 0.5,
+      "eyeHeight": 0.0
+    },
     "updateInterval": 2147483647,
     "clientTrackingRange": 10,
     "category": "misc",
     "friendly": true,
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "inheritedClasses": [
+      "item_frame",
+      "hanging_entity",
+      "block_attached_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAcACQEA/w=="
   },
   {
-    "id": 61,
-    "key": "minecraft:ominous_item_spawner",
-    "width": 0.25,
-    "height": 0.25,
+    "id": 71,
+    "key": "minecraft:jungle_boat",
+    "dimensions": {
+      "width": 1.375,
+      "height": 0.5625,
+      "eyeHeight": 0.5625
+    },
     "updateInterval": 3,
-    "clientTrackingRange": 8,
+    "clientTrackingRange": 10,
     "category": "misc",
     "friendly": true,
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "boatEntity": true,
+    "inheritedClasses": [
+      "boat",
+      "abstract_boat",
+      "vehicle_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAEACQEBCgMAAAAACwgADAgADQEA/w=="
   },
   {
-    "id": 62,
-    "key": "minecraft:fireball",
-    "width": 1.0,
-    "height": 1.0,
-    "updateInterval": 10,
-    "clientTrackingRange": 4,
+    "id": 72,
+    "key": "minecraft:jungle_chest_boat",
+    "dimensions": {
+      "width": 1.375,
+      "height": 0.5625,
+      "eyeHeight": 0.5625
+    },
+    "updateInterval": 3,
+    "clientTrackingRange": 10,
     "category": "misc",
     "friendly": true,
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "boatEntity": true,
+    "inheritedClasses": [
+      "chest_boat",
+      "abstract_chest_boat",
+      "abstract_boat",
+      "vehicle_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAEACQEBCgMAAAAACwgADAgADQEA/w=="
   },
   {
-    "id": 63,
+    "id": 73,
     "key": "minecraft:leash_knot",
-    "width": 0.375,
-    "height": 0.5,
+    "dimensions": {
+      "width": 0.375,
+      "height": 0.5,
+      "eyeHeight": 0.0625
+    },
     "updateInterval": 2147483647,
     "clientTrackingRange": 10,
     "category": "misc",
     "friendly": true,
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "inheritedClasses": [
+      "leash_fence_knot_entity",
+      "block_attached_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEA/w=="
   },
   {
-    "id": 64,
+    "id": 74,
     "key": "minecraft:lightning_bolt",
-    "width": 0.0,
-    "height": 0.0,
+    "dimensions": {
+      "width": 0.0,
+      "height": 0.0,
+      "eyeHeight": 0.0
+    },
     "updateInterval": 2147483647,
     "clientTrackingRange": 16,
     "category": "misc",
     "friendly": true,
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "inheritedClasses": [
+      "lightning_bolt",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEA/w=="
   },
   {
-    "id": 65,
+    "id": 75,
     "key": "minecraft:llama",
-    "width": 0.9,
-    "height": 1.87,
+    "dimensions": {
+      "width": 0.9,
+      "height": 1.87,
+      "eyeHeight": 1.7765
+    },
     "updateInterval": 3,
     "clientTrackingRange": 10,
     "category": "creature",
     "friendly": true,
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "defaultFollowRange": 16.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "llama",
+      "abstract_chested_horse",
+      "abstract_horse",
+      "animal",
+      "ageable_mob",
+      "pathfinder_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAAEAgAEQAAEggAEwEAFAEA/w=="
   },
   {
-    "id": 66,
+    "id": 76,
     "key": "minecraft:llama_spit",
-    "width": 0.25,
-    "height": 0.25,
+    "dimensions": {
+      "width": 0.25,
+      "height": 0.25,
+      "eyeHeight": 0.2125
+    },
     "updateInterval": 10,
     "clientTrackingRange": 4,
     "category": "misc",
     "friendly": true,
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "inheritedClasses": [
+      "llama_spit",
+      "projectile",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEA/w=="
   },
   {
-    "id": 67,
+    "id": 77,
     "key": "minecraft:magma_cube",
-    "width": 0.52,
-    "height": 0.52,
+    "dimensions": {
+      "width": 0.52,
+      "height": 0.52,
+      "eyeHeight": 0.325
+    },
     "updateInterval": 3,
     "clientTrackingRange": 8,
     "category": "monster",
     "summonable": true,
-    "attackable": true
+    "fireImmune": true,
+    "attackable": true,
+    "defaultFollowRange": 16.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "magma_cube",
+      "slime",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAAEAEB/w=="
   },
   {
-    "id": 68,
+    "id": 78,
+    "key": "minecraft:mangrove_boat",
+    "dimensions": {
+      "width": 1.375,
+      "height": 0.5625,
+      "eyeHeight": 0.5625
+    },
+    "updateInterval": 3,
+    "clientTrackingRange": 10,
+    "category": "misc",
+    "friendly": true,
+    "summonable": true,
+    "attackable": true,
+    "boatEntity": true,
+    "inheritedClasses": [
+      "boat",
+      "abstract_boat",
+      "vehicle_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAEACQEBCgMAAAAACwgADAgADQEA/w=="
+  },
+  {
+    "id": 79,
+    "key": "minecraft:mangrove_chest_boat",
+    "dimensions": {
+      "width": 1.375,
+      "height": 0.5625,
+      "eyeHeight": 0.5625
+    },
+    "updateInterval": 3,
+    "clientTrackingRange": 10,
+    "category": "misc",
+    "friendly": true,
+    "summonable": true,
+    "attackable": true,
+    "boatEntity": true,
+    "inheritedClasses": [
+      "chest_boat",
+      "abstract_chest_boat",
+      "abstract_boat",
+      "vehicle_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAEACQEBCgMAAAAACwgADAgADQEA/w=="
+  },
+  {
+    "id": 80,
     "key": "minecraft:marker",
-    "width": 0.0,
-    "height": 0.0,
+    "dimensions": {
+      "width": 0.0,
+      "height": 0.0,
+      "eyeHeight": 0.0
+    },
     "updateInterval": 3,
     "clientTrackingRange": 0,
     "category": "misc",
     "friendly": true,
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "inheritedClasses": [
+      "marker",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEA/w=="
   },
   {
-    "id": 69,
+    "id": 81,
     "key": "minecraft:minecart",
-    "width": 0.98,
-    "height": 0.7,
+    "dimensions": {
+      "width": 0.98,
+      "height": 0.7,
+      "eyeHeight": 0.595
+    },
     "updateInterval": 3,
     "clientTrackingRange": 8,
     "category": "misc",
     "friendly": true,
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "minecartEntity": true,
+    "inheritedClasses": [
+      "minecart",
+      "abstract_minecart",
+      "vehicle_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAEACQEBCgMAAAAACwEADAEGDQgA/w=="
   },
   {
-    "id": 70,
+    "id": 82,
     "key": "minecraft:mooshroom",
-    "width": 0.9,
-    "height": 1.4,
+    "dimensions": {
+      "width": 0.9,
+      "height": 1.4,
+      "eyeHeight": 1.3
+    },
     "updateInterval": 3,
     "clientTrackingRange": 10,
     "category": "creature",
     "friendly": true,
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "defaultFollowRange": 16.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "mushroom_cow",
+      "cow",
+      "animal",
+      "ageable_mob",
+      "pathfinder_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAAEAgAEQQDcmVk/w=="
   },
   {
-    "id": 71,
+    "id": 83,
     "key": "minecraft:mule",
-    "width": 1.3964844,
-    "height": 1.6,
+    "dimensions": {
+      "width": 1.3964844,
+      "height": 1.6,
+      "eyeHeight": 1.52
+    },
     "updateInterval": 3,
     "clientTrackingRange": 8,
     "category": "creature",
     "friendly": true,
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "defaultFollowRange": 16.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "mule",
+      "abstract_chested_horse",
+      "abstract_horse",
+      "animal",
+      "ageable_mob",
+      "pathfinder_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAAEAgAEQAAEggA/w=="
   },
   {
-    "id": 72,
+    "id": 84,
+    "key": "minecraft:oak_boat",
+    "dimensions": {
+      "width": 1.375,
+      "height": 0.5625,
+      "eyeHeight": 0.5625
+    },
+    "updateInterval": 3,
+    "clientTrackingRange": 10,
+    "category": "misc",
+    "friendly": true,
+    "summonable": true,
+    "attackable": true,
+    "boatEntity": true,
+    "inheritedClasses": [
+      "boat",
+      "abstract_boat",
+      "vehicle_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAEACQEBCgMAAAAACwgADAgADQEA/w=="
+  },
+  {
+    "id": 85,
+    "key": "minecraft:oak_chest_boat",
+    "dimensions": {
+      "width": 1.375,
+      "height": 0.5625,
+      "eyeHeight": 0.5625
+    },
+    "updateInterval": 3,
+    "clientTrackingRange": 10,
+    "category": "misc",
+    "friendly": true,
+    "summonable": true,
+    "attackable": true,
+    "boatEntity": true,
+    "inheritedClasses": [
+      "chest_boat",
+      "abstract_chest_boat",
+      "abstract_boat",
+      "vehicle_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAEACQEBCgMAAAAACwgADAgADQEA/w=="
+  },
+  {
+    "id": 86,
     "key": "minecraft:ocelot",
-    "width": 0.6,
-    "height": 0.7,
+    "dimensions": {
+      "width": 0.6,
+      "height": 0.7,
+      "eyeHeight": 0.595
+    },
     "updateInterval": 3,
     "clientTrackingRange": 10,
     "category": "creature",
     "friendly": true,
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "defaultFollowRange": 16.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "ocelot",
+      "animal",
+      "ageable_mob",
+      "pathfinder_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAAEAgAEQgA/w=="
   },
   {
-    "id": 73,
+    "id": 87,
+    "key": "minecraft:ominous_item_spawner",
+    "dimensions": {
+      "width": 0.25,
+      "height": 0.25,
+      "eyeHeight": 0.2125
+    },
+    "updateInterval": 3,
+    "clientTrackingRange": 8,
+    "category": "misc",
+    "friendly": true,
+    "summonable": true,
+    "attackable": true,
+    "inheritedClasses": [
+      "ominous_item_spawner",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAcA/w=="
+  },
+  {
+    "id": 88,
     "key": "minecraft:painting",
-    "width": 0.5,
-    "height": 0.5,
+    "dimensions": {
+      "width": 0.5,
+      "height": 0.5,
+      "eyeHeight": 0.425
+    },
     "updateInterval": 2147483647,
     "clientTrackingRange": 10,
     "category": "misc",
     "friendly": true,
     "summonable": true,
-    "attackable": true
-  },
-  {
-    "id": 74,
-    "key": "minecraft:panda",
-    "width": 1.3,
-    "height": 1.25,
-    "updateInterval": 3,
-    "clientTrackingRange": 10,
-    "category": "creature",
-    "friendly": true,
-    "summonable": true,
-    "attackable": true
-  },
-  {
-    "id": 75,
-    "key": "minecraft:parrot",
-    "width": 0.5,
-    "height": 0.9,
-    "updateInterval": 3,
-    "clientTrackingRange": 8,
-    "category": "creature",
-    "friendly": true,
-    "summonable": true,
-    "attackable": true
-  },
-  {
-    "id": 76,
-    "key": "minecraft:phantom",
-    "width": 0.9,
-    "height": 0.5,
-    "updateInterval": 3,
-    "clientTrackingRange": 8,
-    "category": "monster",
-    "summonable": true,
-    "attackable": true
-  },
-  {
-    "id": 77,
-    "key": "minecraft:pig",
-    "width": 0.9,
-    "height": 0.9,
-    "updateInterval": 3,
-    "clientTrackingRange": 10,
-    "category": "creature",
-    "friendly": true,
-    "summonable": true,
-    "attackable": true
-  },
-  {
-    "id": 78,
-    "key": "minecraft:piglin",
-    "width": 0.6,
-    "height": 1.95,
-    "updateInterval": 3,
-    "clientTrackingRange": 8,
-    "category": "monster",
-    "summonable": true,
-    "attackable": true
-  },
-  {
-    "id": 79,
-    "key": "minecraft:piglin_brute",
-    "width": 0.6,
-    "height": 1.95,
-    "updateInterval": 3,
-    "clientTrackingRange": 8,
-    "category": "monster",
-    "summonable": true,
-    "attackable": true
-  },
-  {
-    "id": 80,
-    "key": "minecraft:pillager",
-    "width": 0.6,
-    "height": 1.95,
-    "updateInterval": 3,
-    "clientTrackingRange": 8,
-    "category": "monster",
-    "summonable": true,
-    "attackable": true
-  },
-  {
-    "id": 81,
-    "key": "minecraft:polar_bear",
-    "width": 1.4,
-    "height": 1.4,
-    "updateInterval": 3,
-    "clientTrackingRange": 10,
-    "category": "creature",
-    "friendly": true,
-    "summonable": true,
-    "attackable": true
-  },
-  {
-    "id": 82,
-    "key": "minecraft:potion",
-    "width": 0.25,
-    "height": 0.25,
-    "updateInterval": 10,
-    "clientTrackingRange": 4,
-    "category": "misc",
-    "friendly": true,
-    "summonable": true,
-    "attackable": true
-  },
-  {
-    "id": 83,
-    "key": "minecraft:pufferfish",
-    "width": 0.7,
-    "height": 0.7,
-    "updateInterval": 3,
-    "clientTrackingRange": 4,
-    "category": "water_ambient",
-    "friendly": true,
-    "summonable": true,
-    "attackable": true
-  },
-  {
-    "id": 84,
-    "key": "minecraft:rabbit",
-    "width": 0.4,
-    "height": 0.5,
-    "updateInterval": 3,
-    "clientTrackingRange": 8,
-    "category": "creature",
-    "friendly": true,
-    "summonable": true,
-    "attackable": true
-  },
-  {
-    "id": 85,
-    "key": "minecraft:ravager",
-    "width": 1.95,
-    "height": 2.2,
-    "updateInterval": 3,
-    "clientTrackingRange": 10,
-    "category": "monster",
-    "summonable": true,
-    "attackable": true
-  },
-  {
-    "id": 86,
-    "key": "minecraft:salmon",
-    "width": 0.7,
-    "height": 0.4,
-    "updateInterval": 3,
-    "clientTrackingRange": 4,
-    "category": "water_ambient",
-    "friendly": true,
-    "summonable": true,
-    "attackable": true
-  },
-  {
-    "id": 87,
-    "key": "minecraft:sheep",
-    "width": 0.9,
-    "height": 1.3,
-    "updateInterval": 3,
-    "clientTrackingRange": 10,
-    "category": "creature",
-    "friendly": true,
-    "summonable": true,
-    "attackable": true
-  },
-  {
-    "id": 88,
-    "key": "minecraft:shulker",
-    "width": 1.0,
-    "height": 1.0,
-    "updateInterval": 3,
-    "clientTrackingRange": 10,
-    "category": "monster",
-    "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "inheritedClasses": [
+      "painting",
+      "hanging_entity",
+      "block_attached_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACBoB/w=="
   },
   {
     "id": 89,
-    "key": "minecraft:shulker_bullet",
-    "width": 0.3125,
-    "height": 0.3125,
+    "key": "minecraft:pale_oak_boat",
+    "dimensions": {
+      "width": 1.375,
+      "height": 0.5625,
+      "eyeHeight": 0.5625
+    },
     "updateInterval": 3,
-    "clientTrackingRange": 8,
+    "clientTrackingRange": 10,
     "category": "misc",
     "friendly": true,
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "boatEntity": true,
+    "inheritedClasses": [
+      "boat",
+      "abstract_boat",
+      "vehicle_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAEACQEBCgMAAAAACwgADAgADQEA/w=="
   },
   {
     "id": 90,
-    "key": "minecraft:silverfish",
-    "width": 0.4,
-    "height": 0.3,
+    "key": "minecraft:pale_oak_chest_boat",
+    "dimensions": {
+      "width": 1.375,
+      "height": 0.5625,
+      "eyeHeight": 0.5625
+    },
     "updateInterval": 3,
-    "clientTrackingRange": 8,
-    "category": "monster",
+    "clientTrackingRange": 10,
+    "category": "misc",
+    "friendly": true,
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "boatEntity": true,
+    "inheritedClasses": [
+      "chest_boat",
+      "abstract_chest_boat",
+      "abstract_boat",
+      "vehicle_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAEACQEBCgMAAAAACwgADAgADQEA/w=="
   },
   {
     "id": 91,
-    "key": "minecraft:skeleton",
-    "width": 0.6,
-    "height": 1.99,
+    "key": "minecraft:panda",
+    "dimensions": {
+      "width": 1.3,
+      "height": 1.25,
+      "eyeHeight": 1.0625
+    },
     "updateInterval": 3,
-    "clientTrackingRange": 8,
-    "category": "monster",
+    "clientTrackingRange": 10,
+    "category": "creature",
+    "friendly": true,
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "defaultFollowRange": 16.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "panda",
+      "animal",
+      "ageable_mob",
+      "pathfinder_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAAEAgAEQEAEgEAEwEAFAAAFQAAFgAA/w=="
   },
   {
     "id": 92,
-    "key": "minecraft:skeleton_horse",
-    "width": 1.3964844,
-    "height": 1.6,
+    "key": "minecraft:parrot",
+    "dimensions": {
+      "width": 0.5,
+      "height": 0.9,
+      "eyeHeight": 0.54
+    },
+    "updateInterval": 3,
+    "clientTrackingRange": 8,
+    "category": "creature",
+    "friendly": true,
+    "summonable": true,
+    "attackable": true,
+    "defaultFollowRange": 16.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "parrot",
+      "shoulder_riding_entity",
+      "tamable_animal",
+      "animal",
+      "ageable_mob",
+      "pathfinder_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAAEAgAEQAAEg0AEwEA/w=="
+  },
+  {
+    "id": 93,
+    "key": "minecraft:phantom",
+    "dimensions": {
+      "width": 0.9,
+      "height": 0.5,
+      "eyeHeight": 0.175
+    },
+    "updateInterval": 3,
+    "clientTrackingRange": 8,
+    "category": "monster",
+    "summonable": true,
+    "attackable": true,
+    "defaultFollowRange": 16.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "phantom",
+      "flying_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAAEAEA/w=="
+  },
+  {
+    "id": 94,
+    "key": "minecraft:pig",
+    "dimensions": {
+      "width": 0.9,
+      "height": 0.9,
+      "eyeHeight": 0.765
+    },
     "updateInterval": 3,
     "clientTrackingRange": 10,
     "category": "creature",
     "friendly": true,
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "defaultFollowRange": 16.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "pig",
+      "animal",
+      "ageable_mob",
+      "pathfinder_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAAEAgAEQgAEgEA/w=="
   },
   {
-    "id": 93,
-    "key": "minecraft:slime",
-    "width": 0.52,
-    "height": 0.52,
+    "id": 95,
+    "key": "minecraft:piglin",
+    "dimensions": {
+      "width": 0.6,
+      "height": 1.95,
+      "eyeHeight": 1.79
+    },
+    "updateInterval": 3,
+    "clientTrackingRange": 8,
+    "category": "monster",
+    "summonable": true,
+    "attackable": true,
+    "defaultFollowRange": 16.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "piglin",
+      "abstract_piglin",
+      "monster",
+      "pathfinder_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAAEAgAEQgAEggAEwgA/w=="
+  },
+  {
+    "id": 96,
+    "key": "minecraft:piglin_brute",
+    "dimensions": {
+      "width": 0.6,
+      "height": 1.95,
+      "eyeHeight": 1.79
+    },
+    "updateInterval": 3,
+    "clientTrackingRange": 8,
+    "category": "monster",
+    "summonable": true,
+    "attackable": true,
+    "defaultFollowRange": 12.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "piglin_brute",
+      "abstract_piglin",
+      "monster",
+      "pathfinder_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAAEAgA/w=="
+  },
+  {
+    "id": 97,
+    "key": "minecraft:pillager",
+    "dimensions": {
+      "width": 0.6,
+      "height": 1.95,
+      "eyeHeight": 1.6575
+    },
+    "updateInterval": 3,
+    "clientTrackingRange": 8,
+    "category": "monster",
+    "summonable": true,
+    "attackable": true,
+    "defaultFollowRange": 32.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "pillager",
+      "abstract_illager",
+      "raider",
+      "patrolling_monster",
+      "monster",
+      "pathfinder_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAAEAgAEQgA/w=="
+  },
+  {
+    "id": 98,
+    "key": "minecraft:polar_bear",
+    "dimensions": {
+      "width": 1.4,
+      "height": 1.4,
+      "eyeHeight": 1.19
+    },
+    "updateInterval": 3,
+    "clientTrackingRange": 10,
+    "category": "creature",
+    "friendly": true,
+    "summonable": true,
+    "attackable": true,
+    "defaultFollowRange": 20.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "polar_bear",
+      "animal",
+      "ageable_mob",
+      "pathfinder_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAAEAgAEQgA/w=="
+  },
+  {
+    "id": 99,
+    "key": "minecraft:potion",
+    "dimensions": {
+      "width": 0.25,
+      "height": 0.25,
+      "eyeHeight": 0.2125
+    },
+    "updateInterval": 10,
+    "clientTrackingRange": 4,
+    "category": "misc",
+    "friendly": true,
+    "summonable": true,
+    "attackable": true,
+    "inheritedClasses": [
+      "thrown_potion",
+      "throwable_item_projectile",
+      "throwable_projectile",
+      "projectile",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAcBugkAAP8="
+  },
+  {
+    "id": 100,
+    "key": "minecraft:pufferfish",
+    "dimensions": {
+      "width": 0.7,
+      "height": 0.7,
+      "eyeHeight": 0.455
+    },
+    "updateInterval": 3,
+    "clientTrackingRange": 4,
+    "category": "water_ambient",
+    "friendly": true,
+    "summonable": true,
+    "attackable": true,
+    "defaultFollowRange": 16.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "pufferfish",
+      "abstract_fish",
+      "water_animal",
+      "pathfinder_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAAEAgAEQEA/w=="
+  },
+  {
+    "id": 101,
+    "key": "minecraft:rabbit",
+    "dimensions": {
+      "width": 0.4,
+      "height": 0.5,
+      "eyeHeight": 0.425
+    },
+    "updateInterval": 3,
+    "clientTrackingRange": 8,
+    "category": "creature",
+    "friendly": true,
+    "summonable": true,
+    "attackable": true,
+    "defaultFollowRange": 16.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "rabbit",
+      "animal",
+      "ageable_mob",
+      "pathfinder_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAAEAgAEQEA/w=="
+  },
+  {
+    "id": 102,
+    "key": "minecraft:ravager",
+    "dimensions": {
+      "width": 1.95,
+      "height": 2.2,
+      "eyeHeight": 1.8700001
+    },
     "updateInterval": 3,
     "clientTrackingRange": 10,
     "category": "monster",
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "defaultFollowRange": 32.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "ravager",
+      "raider",
+      "patrolling_monster",
+      "monster",
+      "pathfinder_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAAEAgA/w=="
   },
   {
-    "id": 94,
-    "key": "minecraft:small_fireball",
-    "width": 0.3125,
-    "height": 0.3125,
-    "updateInterval": 10,
+    "id": 103,
+    "key": "minecraft:salmon",
+    "dimensions": {
+      "width": 0.7,
+      "height": 0.4,
+      "eyeHeight": 0.26
+    },
+    "updateInterval": 3,
     "clientTrackingRange": 4,
-    "category": "misc",
+    "category": "water_ambient",
     "friendly": true,
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "defaultFollowRange": 16.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "salmon",
+      "abstract_schooling_fish",
+      "abstract_fish",
+      "water_animal",
+      "pathfinder_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAAEAgAEQEB/w=="
   },
   {
-    "id": 95,
-    "key": "minecraft:sniffer",
-    "width": 1.9,
-    "height": 1.75,
+    "id": 104,
+    "key": "minecraft:sheep",
+    "dimensions": {
+      "width": 0.9,
+      "height": 1.3,
+      "eyeHeight": 1.235
+    },
     "updateInterval": 3,
     "clientTrackingRange": 10,
     "category": "creature",
     "friendly": true,
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "defaultFollowRange": 16.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "sheep",
+      "animal",
+      "ageable_mob",
+      "pathfinder_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAAEAgAEQAA/w=="
   },
   {
-    "id": 96,
-    "key": "minecraft:snow_golem",
-    "width": 0.7,
-    "height": 1.9,
+    "id": 105,
+    "key": "minecraft:shulker",
+    "dimensions": {
+      "width": 1.0,
+      "height": 1.0,
+      "eyeHeight": 0.5
+    },
+    "updateInterval": 3,
+    "clientTrackingRange": 10,
+    "category": "monster",
+    "summonable": true,
+    "fireImmune": true,
+    "attackable": true,
+    "defaultFollowRange": 16.0,
+    "livingEntity": true,
+    "shulkerEntity": true,
+    "inheritedClasses": [
+      "shulker",
+      "abstract_golem",
+      "pathfinder_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAAEAwAEQAAEgAQ/w=="
+  },
+  {
+    "id": 106,
+    "key": "minecraft:shulker_bullet",
+    "dimensions": {
+      "width": 0.3125,
+      "height": 0.3125,
+      "eyeHeight": 0.265625
+    },
     "updateInterval": 3,
     "clientTrackingRange": 8,
     "category": "misc",
     "friendly": true,
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "inheritedClasses": [
+      "shulker_bullet",
+      "projectile",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEA/w=="
   },
   {
-    "id": 97,
-    "key": "minecraft:snowball",
-    "width": 0.25,
-    "height": 0.25,
+    "id": 107,
+    "key": "minecraft:silverfish",
+    "dimensions": {
+      "width": 0.4,
+      "height": 0.3,
+      "eyeHeight": 0.13
+    },
+    "updateInterval": 3,
+    "clientTrackingRange": 8,
+    "category": "monster",
+    "summonable": true,
+    "attackable": true,
+    "defaultFollowRange": 16.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "silverfish",
+      "monster",
+      "pathfinder_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAA/w=="
+  },
+  {
+    "id": 108,
+    "key": "minecraft:skeleton",
+    "dimensions": {
+      "width": 0.6,
+      "height": 1.99,
+      "eyeHeight": 1.74
+    },
+    "updateInterval": 3,
+    "clientTrackingRange": 8,
+    "category": "monster",
+    "summonable": true,
+    "attackable": true,
+    "defaultFollowRange": 16.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "skeleton",
+      "abstract_skeleton",
+      "monster",
+      "pathfinder_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAAEAgA/w=="
+  },
+  {
+    "id": 109,
+    "key": "minecraft:skeleton_horse",
+    "dimensions": {
+      "width": 1.3964844,
+      "height": 1.6,
+      "eyeHeight": 1.52
+    },
+    "updateInterval": 3,
+    "clientTrackingRange": 10,
+    "category": "creature",
+    "friendly": true,
+    "summonable": true,
+    "attackable": true,
+    "defaultFollowRange": 16.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "skeleton_horse",
+      "abstract_horse",
+      "animal",
+      "ageable_mob",
+      "pathfinder_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAAEAgAEQAA/w=="
+  },
+  {
+    "id": 110,
+    "key": "minecraft:slime",
+    "dimensions": {
+      "width": 0.52,
+      "height": 0.52,
+      "eyeHeight": 0.325
+    },
+    "updateInterval": 3,
+    "clientTrackingRange": 10,
+    "category": "monster",
+    "summonable": true,
+    "attackable": true,
+    "defaultFollowRange": 16.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "slime",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAAEAEB/w=="
+  },
+  {
+    "id": 111,
+    "key": "minecraft:small_fireball",
+    "dimensions": {
+      "width": 0.3125,
+      "height": 0.3125,
+      "eyeHeight": 0.265625
+    },
     "updateInterval": 10,
     "clientTrackingRange": 4,
     "category": "misc",
     "friendly": true,
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "inheritedClasses": [
+      "small_fireball",
+      "fireball",
+      "abstract_hurting_projectile",
+      "projectile",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAcB8wgAAP8="
   },
   {
-    "id": 98,
-    "key": "minecraft:spawner_minecart",
-    "width": 0.98,
-    "height": 0.7,
+    "id": 112,
+    "key": "minecraft:sniffer",
+    "dimensions": {
+      "width": 1.9,
+      "height": 1.75,
+      "eyeHeight": 1.05
+    },
+    "updateInterval": 3,
+    "clientTrackingRange": 10,
+    "category": "creature",
+    "friendly": true,
+    "summonable": true,
+    "attackable": true,
+    "defaultFollowRange": 16.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "sniffer",
+      "animal",
+      "ageable_mob",
+      "pathfinder_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAAEAgAERsAEgEA/w=="
+  },
+  {
+    "id": 113,
+    "key": "minecraft:snowball",
+    "dimensions": {
+      "width": 0.25,
+      "height": 0.25,
+      "eyeHeight": 0.2125
+    },
+    "updateInterval": 10,
+    "clientTrackingRange": 4,
+    "category": "misc",
+    "friendly": true,
+    "summonable": true,
+    "attackable": true,
+    "inheritedClasses": [
+      "snowball",
+      "throwable_item_projectile",
+      "throwable_projectile",
+      "projectile",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAcBsQcAAP8="
+  },
+  {
+    "id": 114,
+    "key": "minecraft:snow_golem",
+    "dimensions": {
+      "width": 0.7,
+      "height": 1.9,
+      "eyeHeight": 1.7
+    },
     "updateInterval": 3,
     "clientTrackingRange": 8,
     "category": "misc",
     "friendly": true,
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "defaultFollowRange": 16.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "snow_golem",
+      "abstract_golem",
+      "pathfinder_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAAEAAQ/w=="
   },
   {
-    "id": 99,
+    "id": 115,
+    "key": "minecraft:spawner_minecart",
+    "dimensions": {
+      "width": 0.98,
+      "height": 0.7,
+      "eyeHeight": 0.595
+    },
+    "updateInterval": 3,
+    "clientTrackingRange": 8,
+    "category": "misc",
+    "friendly": true,
+    "summonable": true,
+    "attackable": true,
+    "minecartEntity": true,
+    "inheritedClasses": [
+      "minecart_spawner",
+      "abstract_minecart",
+      "vehicle_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAEACQEBCgMAAAAACwEADAEGDQgA/w=="
+  },
+  {
+    "id": 116,
     "key": "minecraft:spectral_arrow",
-    "width": 0.5,
-    "height": 0.5,
+    "dimensions": {
+      "width": 0.5,
+      "height": 0.5,
+      "eyeHeight": 0.13
+    },
     "updateInterval": 20,
     "clientTrackingRange": 4,
     "category": "misc",
     "friendly": true,
-    "summonable": true
+    "summonable": true,
+    "inheritedClasses": [
+      "spectral_arrow",
+      "abstract_arrow",
+      "projectile",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQAACggA/w=="
   },
   {
-    "id": 100,
+    "id": 117,
     "key": "minecraft:spider",
-    "width": 1.4,
-    "height": 0.9,
+    "dimensions": {
+      "width": 1.4,
+      "height": 0.9,
+      "eyeHeight": 0.65
+    },
     "updateInterval": 3,
     "clientTrackingRange": 8,
     "category": "monster",
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "defaultFollowRange": 16.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "spider",
+      "monster",
+      "pathfinder_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAAEAAA/w=="
   },
   {
-    "id": 101,
+    "id": 118,
+    "key": "minecraft:spruce_boat",
+    "dimensions": {
+      "width": 1.375,
+      "height": 0.5625,
+      "eyeHeight": 0.5625
+    },
+    "updateInterval": 3,
+    "clientTrackingRange": 10,
+    "category": "misc",
+    "friendly": true,
+    "summonable": true,
+    "attackable": true,
+    "boatEntity": true,
+    "inheritedClasses": [
+      "boat",
+      "abstract_boat",
+      "vehicle_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAEACQEBCgMAAAAACwgADAgADQEA/w=="
+  },
+  {
+    "id": 119,
+    "key": "minecraft:spruce_chest_boat",
+    "dimensions": {
+      "width": 1.375,
+      "height": 0.5625,
+      "eyeHeight": 0.5625
+    },
+    "updateInterval": 3,
+    "clientTrackingRange": 10,
+    "category": "misc",
+    "friendly": true,
+    "summonable": true,
+    "attackable": true,
+    "boatEntity": true,
+    "inheritedClasses": [
+      "chest_boat",
+      "abstract_chest_boat",
+      "abstract_boat",
+      "vehicle_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAEACQEBCgMAAAAACwgADAgADQEA/w=="
+  },
+  {
+    "id": 120,
     "key": "minecraft:squid",
-    "width": 0.8,
-    "height": 0.8,
+    "dimensions": {
+      "width": 0.8,
+      "height": 0.8,
+      "eyeHeight": 0.4
+    },
     "updateInterval": 3,
     "clientTrackingRange": 8,
     "category": "water_creature",
     "friendly": true,
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "defaultFollowRange": 16.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "squid",
+      "ageable_water_creature",
+      "ageable_mob",
+      "pathfinder_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAAEAgA/w=="
   },
   {
-    "id": 102,
+    "id": 121,
     "key": "minecraft:stray",
-    "width": 0.6,
-    "height": 1.99,
+    "dimensions": {
+      "width": 0.6,
+      "height": 1.99,
+      "eyeHeight": 1.74
+    },
     "updateInterval": 3,
     "clientTrackingRange": 8,
     "category": "monster",
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "defaultFollowRange": 16.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "stray",
+      "abstract_skeleton",
+      "monster",
+      "pathfinder_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAA/w=="
   },
   {
-    "id": 103,
+    "id": 122,
     "key": "minecraft:strider",
-    "width": 0.9,
-    "height": 1.7,
+    "dimensions": {
+      "width": 0.9,
+      "height": 1.7,
+      "eyeHeight": 1.445
+    },
     "updateInterval": 3,
     "clientTrackingRange": 10,
     "category": "creature",
     "friendly": true,
     "summonable": true,
-    "attackable": true
+    "fireImmune": true,
+    "attackable": true,
+    "defaultFollowRange": 16.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "strider",
+      "animal",
+      "ageable_mob",
+      "pathfinder_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAAEAgAEQEAEggAEwgA/w=="
   },
   {
-    "id": 104,
+    "id": 123,
     "key": "minecraft:tadpole",
-    "width": 0.4,
-    "height": 0.3,
+    "dimensions": {
+      "width": 0.4,
+      "height": 0.3,
+      "eyeHeight": 0.19500001
+    },
     "updateInterval": 3,
     "clientTrackingRange": 10,
     "category": "creature",
     "friendly": true,
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "defaultFollowRange": 16.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "tadpole",
+      "abstract_fish",
+      "water_animal",
+      "pathfinder_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAAEAgA/w=="
   },
   {
-    "id": 105,
+    "id": 124,
     "key": "minecraft:text_display",
-    "width": 0.0,
-    "height": 0.0,
+    "dimensions": {
+      "width": 0.0,
+      "height": 0.0,
+      "eyeHeight": 0.0
+    },
     "updateInterval": 1,
     "clientTrackingRange": 10,
     "category": "misc",
     "friendly": true,
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "inheritedClasses": [
+      "text_display",
+      "display",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAEACQEACgEACx0AAAAAAAAAAAAAAAAMHT+AAAA/gAAAP4AAAA0eAAAAAAAAAAAAAAAAP4AAAA4eAAAAAAAAAAAAAAAAP4AAAA8AABAB/////w8RAz+AAAASAwAAAAATAz+AAAAUAwAAAAAVAwAAAAAWAf////8PFwUIAAAYAcgBGQGAgICABBoA/xsAAP8="
   },
   {
-    "id": 106,
+    "id": 125,
     "key": "minecraft:tnt",
-    "width": 0.98,
-    "height": 0.98,
+    "dimensions": {
+      "width": 0.98,
+      "height": 0.98,
+      "eyeHeight": 0.15
+    },
     "updateInterval": 10,
     "clientTrackingRange": 10,
     "category": "misc",
     "friendly": true,
     "summonable": true,
-    "attackable": true
+    "fireImmune": true,
+    "attackable": true,
+    "inheritedClasses": [
+      "primed_tnt",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAFQCQ7aEP8="
   },
   {
-    "id": 107,
+    "id": 126,
     "key": "minecraft:tnt_minecart",
-    "width": 0.98,
-    "height": 0.7,
+    "dimensions": {
+      "width": 0.98,
+      "height": 0.7,
+      "eyeHeight": 0.595
+    },
     "updateInterval": 3,
     "clientTrackingRange": 8,
     "category": "misc",
     "friendly": true,
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "minecartEntity": true,
+    "inheritedClasses": [
+      "minecart_tnt",
+      "abstract_minecart",
+      "vehicle_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAEACQEBCgMAAAAACwEADAEGDQgA/w=="
   },
   {
-    "id": 108,
+    "id": 127,
     "key": "minecraft:trader_llama",
-    "width": 0.9,
-    "height": 1.87,
+    "dimensions": {
+      "width": 0.9,
+      "height": 1.87,
+      "eyeHeight": 1.7765
+    },
     "updateInterval": 3,
     "clientTrackingRange": 10,
     "category": "creature",
     "friendly": true,
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "defaultFollowRange": 16.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "trader_llama",
+      "llama",
+      "abstract_chested_horse",
+      "abstract_horse",
+      "animal",
+      "ageable_mob",
+      "pathfinder_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAAEAgAEQAAEggAEwEAFAEA/w=="
   },
   {
-    "id": 109,
+    "id": 128,
     "key": "minecraft:trident",
-    "width": 0.5,
-    "height": 0.5,
+    "dimensions": {
+      "width": 0.5,
+      "height": 0.5,
+      "eyeHeight": 0.13
+    },
     "updateInterval": 20,
     "clientTrackingRange": 4,
     "category": "misc",
     "friendly": true,
-    "summonable": true
+    "summonable": true,
+    "inheritedClasses": [
+      "thrown_trident",
+      "abstract_arrow",
+      "projectile",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQAACggACwAADAgA/w=="
   },
   {
-    "id": 110,
+    "id": 129,
     "key": "minecraft:tropical_fish",
-    "width": 0.5,
-    "height": 0.4,
+    "dimensions": {
+      "width": 0.5,
+      "height": 0.4,
+      "eyeHeight": 0.26
+    },
     "updateInterval": 3,
     "clientTrackingRange": 4,
     "category": "water_ambient",
     "friendly": true,
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "defaultFollowRange": 16.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "tropical_fish",
+      "abstract_schooling_fish",
+      "abstract_fish",
+      "water_animal",
+      "pathfinder_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAAEAgAEQEA/w=="
   },
   {
-    "id": 111,
+    "id": 130,
     "key": "minecraft:turtle",
-    "width": 1.2,
-    "height": 0.4,
+    "dimensions": {
+      "width": 1.2,
+      "height": 0.4,
+      "eyeHeight": 0.34
+    },
     "updateInterval": 3,
     "clientTrackingRange": 10,
     "category": "creature",
     "friendly": true,
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "defaultFollowRange": 16.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "turtle",
+      "animal",
+      "ageable_mob",
+      "pathfinder_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAAEAgAEQoAAAAAAAAAABIIABMIABQKAAAAAAAAAAAVCAAWCAD/"
   },
   {
-    "id": 112,
+    "id": 131,
     "key": "minecraft:vex",
-    "width": 0.4,
-    "height": 0.8,
+    "dimensions": {
+      "width": 0.4,
+      "height": 0.8,
+      "eyeHeight": 0.51875
+    },
     "updateInterval": 3,
     "clientTrackingRange": 8,
     "category": "monster",
     "summonable": true,
-    "attackable": true
+    "fireImmune": true,
+    "attackable": true,
+    "defaultFollowRange": 16.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "vex",
+      "monster",
+      "pathfinder_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAAEAAA/w=="
   },
   {
-    "id": 113,
+    "id": 132,
     "key": "minecraft:villager",
-    "width": 0.6,
-    "height": 1.95,
+    "dimensions": {
+      "width": 0.6,
+      "height": 1.95,
+      "eyeHeight": 1.62
+    },
     "updateInterval": 3,
     "clientTrackingRange": 10,
     "category": "misc",
     "friendly": true,
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "defaultFollowRange": 16.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "villager",
+      "abstract_villager",
+      "ageable_mob",
+      "pathfinder_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAAEAgAEQEAEhMCAAH/"
   },
   {
-    "id": 114,
+    "id": 133,
     "key": "minecraft:vindicator",
-    "width": 0.6,
-    "height": 1.95,
+    "dimensions": {
+      "width": 0.6,
+      "height": 1.95,
+      "eyeHeight": 1.6575
+    },
     "updateInterval": 3,
     "clientTrackingRange": 8,
     "category": "monster",
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "defaultFollowRange": 12.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "vindicator",
+      "abstract_illager",
+      "raider",
+      "patrolling_monster",
+      "monster",
+      "pathfinder_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAAEAgA/w=="
   },
   {
-    "id": 115,
+    "id": 134,
     "key": "minecraft:wandering_trader",
-    "width": 0.6,
-    "height": 1.95,
+    "dimensions": {
+      "width": 0.6,
+      "height": 1.95,
+      "eyeHeight": 1.62
+    },
     "updateInterval": 3,
     "clientTrackingRange": 10,
     "category": "creature",
     "friendly": true,
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "defaultFollowRange": 16.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "wandering_trader",
+      "abstract_villager",
+      "ageable_mob",
+      "pathfinder_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAAEAgAEQEA/w=="
   },
   {
-    "id": 116,
+    "id": 135,
     "key": "minecraft:warden",
-    "width": 0.9,
-    "height": 2.9,
+    "dimensions": {
+      "width": 0.9,
+      "height": 2.9,
+      "eyeHeight": 2.4650002
+    },
     "updateInterval": 3,
     "clientTrackingRange": 16,
     "category": "monster",
     "summonable": true,
-    "attackable": true
+    "fireImmune": true,
+    "attackable": true,
+    "defaultFollowRange": 24.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "warden",
+      "monster",
+      "pathfinder_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAAEAEA/w=="
   },
   {
-    "id": 117,
+    "id": 136,
     "key": "minecraft:wind_charge",
-    "width": 0.3125,
-    "height": 0.3125,
+    "dimensions": {
+      "width": 0.3125,
+      "height": 0.3125,
+      "eyeHeight": 0.0
+    },
     "updateInterval": 10,
     "clientTrackingRange": 4,
     "category": "misc",
     "friendly": true,
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "windChargeEntity": true,
+    "inheritedClasses": [
+      "wind_charge",
+      "abstract_wind_charge",
+      "abstract_hurting_projectile",
+      "projectile",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEA/w=="
   },
   {
-    "id": 118,
+    "id": 137,
     "key": "minecraft:witch",
-    "width": 0.6,
-    "height": 1.95,
+    "dimensions": {
+      "width": 0.6,
+      "height": 1.95,
+      "eyeHeight": 1.62
+    },
     "updateInterval": 3,
     "clientTrackingRange": 8,
     "category": "monster",
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "defaultFollowRange": 16.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "witch",
+      "raider",
+      "patrolling_monster",
+      "monster",
+      "pathfinder_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAAEAgAEQgA/w=="
   },
   {
-    "id": 119,
+    "id": 138,
     "key": "minecraft:wither",
-    "width": 0.9,
-    "height": 3.5,
+    "dimensions": {
+      "width": 0.9,
+      "height": 3.5,
+      "eyeHeight": 2.9750001
+    },
     "updateInterval": 3,
     "clientTrackingRange": 10,
     "category": "monster",
     "summonable": true,
-    "attackable": true
+    "fireImmune": true,
+    "attackable": true,
+    "defaultFollowRange": 40.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "wither_boss",
+      "monster",
+      "pathfinder_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAAEAEAEQEAEgEAEwEA/w=="
   },
   {
-    "id": 120,
+    "id": 139,
     "key": "minecraft:wither_skeleton",
-    "width": 0.7,
-    "height": 2.4,
+    "dimensions": {
+      "width": 0.7,
+      "height": 2.4,
+      "eyeHeight": 2.1
+    },
     "updateInterval": 3,
     "clientTrackingRange": 8,
     "category": "monster",
     "summonable": true,
-    "attackable": true
+    "fireImmune": true,
+    "attackable": true,
+    "defaultFollowRange": 16.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "wither_skeleton",
+      "abstract_skeleton",
+      "monster",
+      "pathfinder_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAA/w=="
   },
   {
-    "id": 121,
+    "id": 140,
     "key": "minecraft:wither_skull",
-    "width": 0.3125,
-    "height": 0.3125,
+    "dimensions": {
+      "width": 0.3125,
+      "height": 0.3125,
+      "eyeHeight": 0.265625
+    },
     "updateInterval": 10,
     "clientTrackingRange": 4,
     "category": "misc",
     "friendly": true,
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "inheritedClasses": [
+      "wither_skull",
+      "abstract_hurting_projectile",
+      "projectile",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAgA/w=="
   },
   {
-    "id": 122,
+    "id": 141,
     "key": "minecraft:wolf",
-    "width": 0.6,
-    "height": 0.85,
+    "dimensions": {
+      "width": 0.6,
+      "height": 0.85,
+      "eyeHeight": 0.68
+    },
     "updateInterval": 3,
     "clientTrackingRange": 10,
     "category": "creature",
     "friendly": true,
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "defaultFollowRange": 16.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "wolf",
+      "tamable_animal",
+      "animal",
+      "ageable_mob",
+      "pathfinder_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAAEAgAEQAAEg0AEwgAFAEOFQEAFhcE/w=="
   },
   {
-    "id": 123,
+    "id": 142,
     "key": "minecraft:zoglin",
-    "width": 1.3964844,
-    "height": 1.4,
+    "dimensions": {
+      "width": 1.3964844,
+      "height": 1.4,
+      "eyeHeight": 1.19
+    },
     "updateInterval": 3,
     "clientTrackingRange": 8,
     "category": "monster",
     "summonable": true,
-    "attackable": true
+    "fireImmune": true,
+    "attackable": true,
+    "defaultFollowRange": 16.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "zoglin",
+      "monster",
+      "pathfinder_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAAEAgA/w=="
   },
   {
-    "id": 124,
+    "id": 143,
     "key": "minecraft:zombie",
-    "width": 0.6,
-    "height": 1.95,
+    "dimensions": {
+      "width": 0.6,
+      "height": 1.95,
+      "eyeHeight": 1.74
+    },
     "updateInterval": 3,
     "clientTrackingRange": 8,
     "category": "monster",
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "defaultFollowRange": 35.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "zombie",
+      "monster",
+      "pathfinder_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAAEAgAEQEAEggA/w=="
   },
   {
-    "id": 125,
+    "id": 144,
     "key": "minecraft:zombie_horse",
-    "width": 1.3964844,
-    "height": 1.6,
+    "dimensions": {
+      "width": 1.3964844,
+      "height": 1.6,
+      "eyeHeight": 1.52
+    },
     "updateInterval": 3,
     "clientTrackingRange": 10,
     "category": "creature",
     "friendly": true,
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "defaultFollowRange": 16.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "zombie_horse",
+      "abstract_horse",
+      "animal",
+      "ageable_mob",
+      "pathfinder_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAAEAgAEQAA/w=="
   },
   {
-    "id": 126,
+    "id": 145,
     "key": "minecraft:zombie_villager",
-    "width": 0.6,
-    "height": 1.95,
+    "dimensions": {
+      "width": 0.6,
+      "height": 1.95,
+      "eyeHeight": 1.74
+    },
     "updateInterval": 3,
     "clientTrackingRange": 8,
     "category": "monster",
     "summonable": true,
-    "attackable": true
+    "attackable": true,
+    "defaultFollowRange": 35.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "zombie_villager",
+      "zombie",
+      "monster",
+      "pathfinder_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAAEAgAEQEAEggAEwgAFBMCAAH/"
   },
   {
-    "id": 127,
+    "id": 146,
     "key": "minecraft:zombified_piglin",
-    "width": 0.6,
-    "height": 1.95,
+    "dimensions": {
+      "width": 0.6,
+      "height": 1.95,
+      "eyeHeight": 1.79
+    },
     "updateInterval": 3,
     "clientTrackingRange": 8,
     "category": "monster",
     "summonable": true,
-    "attackable": true
+    "fireImmune": true,
+    "attackable": true,
+    "defaultFollowRange": 35.0,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "zombified_piglin",
+      "zombie",
+      "monster",
+      "pathfinder_mob",
+      "mob",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwAAEAgAEQEAEggA/w=="
   },
   {
-    "id": 128,
+    "id": 147,
     "key": "minecraft:player",
-    "width": 0.6,
-    "height": 1.8,
+    "dimensions": {
+      "width": 0.6,
+      "height": 1.8,
+      "eyeHeight": 1.62
+    },
     "updateInterval": 2,
     "clientTrackingRange": 32,
     "category": "misc",
     "friendly": true,
-    "attackable": true
+    "attackable": true,
+    "playerEntity": true,
+    "livingEntity": true,
+    "inheritedClasses": [
+      "",
+      "player",
+      "living_entity",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAAACQM/gAAAChIACwgADAEADQEADgsADwMAAAAAEAEAEQAAEgABExAKABQQCgD/"
   },
   {
-    "id": 129,
+    "id": 148,
     "key": "minecraft:fishing_bobber",
-    "width": 0.25,
-    "height": 0.25,
+    "dimensions": {
+      "width": 0.25,
+      "height": 0.25,
+      "eyeHeight": 0.2125
+    },
     "updateInterval": 5,
     "clientTrackingRange": 4,
     "category": "misc",
     "friendly": true,
-    "attackable": true
+    "attackable": true,
+    "inheritedClasses": [
+      "fishing_hook",
+      "projectile",
+      "entity"
+    ],
+    "defaultEntityMetadata": "/////w8AAAABAawCAgYAAwgABAgABQgABhUABwEACAEACQgA/w=="
   }
 ]

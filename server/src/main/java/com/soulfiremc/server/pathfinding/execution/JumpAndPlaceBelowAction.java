@@ -17,10 +17,11 @@
  */
 package com.soulfiremc.server.pathfinding.execution;
 
+import com.google.common.math.DoubleMath;
 import com.soulfiremc.server.pathfinding.SFVec3i;
 import com.soulfiremc.server.protocol.BotConnection;
-import com.soulfiremc.server.protocol.bot.BotActionManager;
-import com.soulfiremc.server.util.BlockTypeHelper;
+import com.soulfiremc.server.protocol.bot.MultiPlayerGameMode;
+import com.soulfiremc.server.util.SFBlockHelpers;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.geysermc.mcprotocollib.protocol.data.game.entity.player.Hand;
@@ -29,7 +30,7 @@ import org.geysermc.mcprotocollib.protocol.data.game.entity.player.Hand;
 @RequiredArgsConstructor
 public final class JumpAndPlaceBelowAction implements WorldAction {
   private final SFVec3i blockPlacePosition;
-  private final BotActionManager.BlockPlaceAgainstData blockPlaceAgainstData;
+  private final MultiPlayerGameMode.BlockPlaceAgainstData blockPlaceAgainstData;
   private boolean putOnHotbar = false;
   private boolean finishedPlacing = false;
 
@@ -37,7 +38,7 @@ public final class JumpAndPlaceBelowAction implements WorldAction {
   public boolean isCompleted(BotConnection connection) {
     var level = connection.dataManager().currentLevel();
 
-    return BlockTypeHelper.isFullBlock(level.getBlockState(blockPlacePosition));
+    return SFBlockHelpers.isFullBlock(level.getBlockState(blockPlacePosition));
   }
 
   @Override
@@ -48,11 +49,11 @@ public final class JumpAndPlaceBelowAction implements WorldAction {
   @Override
   public void tick(BotConnection connection) {
     var dataManager = connection.dataManager();
-    var clientEntity = dataManager.clientEntity();
-    dataManager.controlState().resetAll();
+    var clientEntity = dataManager.localPlayer();
+    connection.controlState().resetAll();
 
     if (!putOnHotbar) {
-      if (ItemPlaceHelper.placeBestBlockInHand(dataManager)) {
+      if (ItemPlaceHelper.placeBestBlockInHand(connection)) {
         putOnHotbar = true;
       }
 
@@ -63,15 +64,22 @@ public final class JumpAndPlaceBelowAction implements WorldAction {
       return;
     }
 
-    if (clientEntity.y() < blockPlacePosition.y + 1) {
+    var deltaMovement = clientEntity.deltaMovement();
+    if (clientEntity.y() < blockPlacePosition.y + 1
+      // Ensure we're roughly standing still
+      && DoubleMath.fuzzyEquals(deltaMovement.getY(), -clientEntity.getEntityBaseGravity(), 0.1)
+      // No X movement
+      && deltaMovement.getX() == 0
+      // No Z movement
+      && deltaMovement.getZ() == 0) {
       // Make sure we are so high that we can place the block
-      dataManager.controlState().jumping(true);
+      connection.controlState().jumping(true);
       return;
     } else {
-      dataManager.controlState().jumping(false);
+      connection.controlState().jumping(false);
     }
 
-    connection.dataManager().botActionManager().placeBlock(Hand.MAIN_HAND, blockPlaceAgainstData);
+    connection.dataManager().gameModeState().placeBlock(Hand.MAIN_HAND, blockPlaceAgainstData);
     finishedPlacing = true;
   }
 

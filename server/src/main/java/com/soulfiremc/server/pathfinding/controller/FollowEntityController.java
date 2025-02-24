@@ -20,38 +20,42 @@ package com.soulfiremc.server.pathfinding.controller;
 import com.soulfiremc.server.pathfinding.SFVec3i;
 import com.soulfiremc.server.pathfinding.execution.PathExecutor;
 import com.soulfiremc.server.pathfinding.goals.CloseToPosGoal;
+import com.soulfiremc.server.pathfinding.goals.DynamicGoalScorer;
+import com.soulfiremc.server.pathfinding.graph.PathConstraint;
 import com.soulfiremc.server.protocol.BotConnection;
+import com.soulfiremc.server.protocol.bot.state.entity.Entity;
 import com.soulfiremc.server.util.TimeUtil;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.concurrent.TimeUnit;
+import java.util.function.Predicate;
+
 @Slf4j
 @RequiredArgsConstructor
-public class FollowEntityController {
-  private final int entityId;
+public final class FollowEntityController {
+  private final Predicate<Entity> entityMatcher;
   private final int maxRadius;
 
   public void start(BotConnection bot) {
     while (true) {
-      var entity = bot.dataManager().entityTrackerState().getEntity(entityId);
-      if (entity == null) {
+      var entity = bot.dataManager().currentLevel().entityTracker()
+        .getEntities()
+        .stream()
+        .filter(entityMatcher)
+        .findAny();
+      if (entity.isEmpty()) {
         log.info("Entity not found, aborting");
         return;
       }
 
-      if (entity.blockPos().distance(bot.dataManager().clientEntity().blockPos()) <= maxRadius) {
+      if (entity.get().blockPos().distance(bot.dataManager().localPlayer().blockPos()) <= maxRadius) {
         TimeUtil.waitTime(1, TimeUnit.SECONDS);
         continue;
       }
 
-      var pathFuture = new CompletableFuture<Void>();
-      PathExecutor.executePathfinding(bot, new CloseToPosGoal(SFVec3i.fromInt(entity.blockPos()), maxRadius),
-        pathFuture);
-
       try {
-        pathFuture.get();
+        PathExecutor.executePathfinding(bot, (DynamicGoalScorer) () -> new CloseToPosGoal(SFVec3i.fromInt(entity.get().blockPos()), maxRadius), new PathConstraint(bot)).get();
       } catch (Exception e) {
         log.error("Got exception while executing path, aborting", e);
         return;

@@ -17,15 +17,15 @@
  */
 package com.soulfiremc.server.protocol.bot.state;
 
-import com.soulfiremc.server.protocol.bot.utils.SectionUtils;
+import com.soulfiremc.server.util.SectionUtils;
 
 public interface LevelHeightAccessor {
   int getHeight();
 
-  int getMinBuildHeight();
+  int getMinY();
 
-  default int getMaxBuildHeight() {
-    return this.getMinBuildHeight() + this.getHeight();
+  default int getMaxY() {
+    return this.getMinY() + this.getHeight() - 1;
   }
 
   default int getSectionsCount() {
@@ -33,15 +33,15 @@ public interface LevelHeightAccessor {
   }
 
   default int getMinSection() {
-    return SectionUtils.blockToSection(this.getMinBuildHeight());
+    return SectionUtils.blockToSection(this.getMinY());
   }
 
   default int getMaxSection() {
-    return SectionUtils.blockToSection(this.getMaxBuildHeight() - 1) + 1;
+    return SectionUtils.blockToSection(this.getMaxY()) + 1;
   }
 
   default boolean isOutsideBuildHeight(int y) {
-    return y < this.getMinBuildHeight() || y >= this.getMaxBuildHeight();
+    return y < this.getMinY() || y > this.getMaxY();
   }
 
   default int getSectionIndex(int y) {

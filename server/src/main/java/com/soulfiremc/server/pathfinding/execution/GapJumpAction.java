@@ -30,17 +30,17 @@ import org.geysermc.mcprotocollib.protocol.data.game.entity.RotationOrigin;
 public final class GapJumpAction implements WorldAction {
   private final SFVec3i blockPosition;
   private boolean didLook = false;
-  private boolean lockYaw = false;
+  private boolean lockYRot = false;
   private int noJumpTicks = 0;
 
   @Override
   public boolean isCompleted(BotConnection connection) {
-    var clientEntity = connection.dataManager().clientEntity();
+    var clientEntity = connection.dataManager().localPlayer();
     var botPosition = clientEntity.pos();
     var level = connection.dataManager().currentLevel();
 
     var blockMeta = level.getBlockState(blockPosition);
-    var targetMiddleBlock = VectorHelper.topMiddleOfBlock(blockPosition.toVector3d(), blockMeta);
+    var targetMiddleBlock = VectorHelper.topMiddleOfBlock(blockPosition, blockMeta);
     if (MathHelper.isOutsideTolerance(botPosition.getY(), targetMiddleBlock.getY(), 0.2)) {
       // We want to be on the same Y level
       return false;
@@ -57,34 +57,34 @@ public final class GapJumpAction implements WorldAction {
 
   @Override
   public void tick(BotConnection connection) {
-    var clientEntity = connection.dataManager().clientEntity();
-    clientEntity.controlState().resetAll();
+    var clientEntity = connection.dataManager().localPlayer();
+    connection.controlState().resetAll();
 
     var level = connection.dataManager().currentLevel();
 
     var blockMeta = level.getBlockState(blockPosition);
-    var targetMiddleBlock = VectorHelper.topMiddleOfBlock(blockPosition.toVector3d(), blockMeta);
+    var targetMiddleBlock = VectorHelper.topMiddleOfBlock(blockPosition, blockMeta);
 
-    var previousYaw = clientEntity.yaw();
+    var previousYRot = clientEntity.yRot();
     clientEntity.lookAt(RotationOrigin.EYES, targetMiddleBlock);
-    clientEntity.pitch(0);
-    var newYaw = clientEntity.yaw();
+    clientEntity.setXRot(0);
+    var newYRot = clientEntity.yRot();
 
-    var yawDifference = Math.abs(MathHelper.wrapDegrees(newYaw - previousYaw));
+    var yRotDifference = Math.abs(MathHelper.wrapDegrees(newYRot - previousYRot));
 
-    // We should only set the yaw once to the server to prevent the bot looking weird due to
+    // We should only set the yRot once to the server to prevent the bot looking weird due to
     // inaccuracy
     if (!didLook) {
       didLook = true;
-    } else if (yawDifference > 5 || lockYaw) {
-      lockYaw = true;
-      clientEntity.lastYaw(newYaw);
+    } else if (yRotDifference > 5 || lockYRot) {
+      lockYRot = true;
+      clientEntity.lastYRot(newYRot);
     }
 
-    clientEntity.controlState().forward(true);
+    connection.controlState().forward(true);
 
     if (shouldJump()) {
-      clientEntity.controlState().jumping(true);
+      connection.controlState().jumping(true);
     }
   }
 

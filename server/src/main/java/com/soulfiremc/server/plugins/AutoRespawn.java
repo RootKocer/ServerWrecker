@@ -17,40 +17,55 @@
  */
 package com.soulfiremc.server.plugins;
 
-import com.soulfiremc.server.SoulFireServer;
-import com.soulfiremc.server.api.PluginHelper;
-import com.soulfiremc.server.api.SoulFireAPI;
+import com.soulfiremc.server.adventure.SoulFireAdventure;
+import com.soulfiremc.server.api.InternalPlugin;
+import com.soulfiremc.server.api.PluginInfo;
 import com.soulfiremc.server.api.event.bot.SFPacketReceiveEvent;
-import com.soulfiremc.server.api.event.lifecycle.SettingsRegistryInitEvent;
+import com.soulfiremc.server.api.event.lifecycle.InstanceSettingsRegistryInitEvent;
 import com.soulfiremc.server.settings.lib.SettingsObject;
-import com.soulfiremc.server.settings.property.BooleanProperty;
-import com.soulfiremc.server.settings.property.MinMaxPropertyLink;
-import com.soulfiremc.server.settings.property.Property;
-import com.soulfiremc.server.util.RandomUtil;
-import java.util.concurrent.TimeUnit;
+import com.soulfiremc.server.settings.property.*;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import net.lenni0451.lambdaevents.EventHandler;
 import org.geysermc.mcprotocollib.protocol.data.game.ClientCommand;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.entity.player.ClientboundPlayerCombatKillPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.ServerboundClientCommandPacket;
+import org.pf4j.Extension;
 
-public class AutoRespawn implements InternalPlugin {
+import java.util.concurrent.TimeUnit;
+
+@Extension
+public class AutoRespawn extends InternalPlugin {
+  public AutoRespawn() {
+    super(new PluginInfo(
+      "auto-respawn",
+      "1.0.0",
+      "Automatically respawns after death",
+      "AlexProgrammerDE",
+      "GPL-3.0",
+      "https://soulfiremc.com"
+    ));
+  }
+
+  @EventHandler
   public static void onPacket(SFPacketReceiveEvent event) {
     if (event.packet() instanceof ClientboundPlayerCombatKillPacket combatKillPacket) {
       var connection = event.connection();
-      var settingsHolder = connection.settingsHolder();
-      if (!settingsHolder.get(AutoRespawnSettings.ENABLED)) {
+      var settingsSource = connection.settingsSource();
+      if (!settingsSource.get(AutoRespawnSettings.ENABLED)) {
+        return;
+      }
+
+      if (combatKillPacket.getPlayerId() != connection.dataManager().localPlayer().entityId()) {
         return;
       }
 
       var message =
-        SoulFireServer.PLAIN_MESSAGE_SERIALIZER.serialize(combatKillPacket.getMessage());
+        SoulFireAdventure.PLAIN_MESSAGE_SERIALIZER.serialize(combatKillPacket.getMessage());
       connection
         .logger()
         .info(
-          "[AutoRespawn] Died with killer: {} and message: '{}'",
-          combatKillPacket.getPlayerId(),
+          "[AutoRespawn] Died with message: '{}'",
           message);
 
       connection
@@ -60,53 +75,43 @@ public class AutoRespawn implements InternalPlugin {
             connection
               .session()
               .send(new ServerboundClientCommandPacket(ClientCommand.RESPAWN)),
-          RandomUtil.getRandomInt(
-            settingsHolder.get(AutoRespawnSettings.DELAY.min()),
-            settingsHolder.get(AutoRespawnSettings.DELAY.max())),
+          settingsSource.getRandom(AutoRespawnSettings.DELAY).getAsLong(),
           TimeUnit.SECONDS);
     }
   }
 
   @EventHandler
-  public static void onSettingsRegistryInit(SettingsRegistryInitEvent event) {
-    event.settingsRegistry().addClass(AutoRespawnSettings.class, "Auto Respawn");
-  }
-
-  @Override
-  public void onLoad() {
-    SoulFireAPI.registerListeners(AutoRespawn.class);
-    PluginHelper.registerBotEventConsumer(SFPacketReceiveEvent.class, AutoRespawn::onPacket);
+  public void onSettingsRegistryInit(InstanceSettingsRegistryInitEvent event) {
+    event.settingsRegistry().addPluginPage(AutoRespawnSettings.class, "Auto Respawn", this, "repeat", AutoRespawnSettings.ENABLED);
   }
 
   @NoArgsConstructor(access = AccessLevel.NONE)
   private static class AutoRespawnSettings implements SettingsObject {
-    private static final Property.Builder BUILDER = Property.builder("auto-respawn");
+    private static final String NAMESPACE = "auto-respawn";
     public static final BooleanProperty ENABLED =
-      BUILDER.ofBoolean(
-        "enabled",
-        "Enable Auto Respawn",
-        new String[] {"--auto-respawn"},
-        "Respawn automatically after death",
-        true);
-    public static final MinMaxPropertyLink DELAY =
-      new MinMaxPropertyLink(
-        BUILDER.ofInt(
-          "min-delay",
-          "Min delay (seconds)",
-          new String[] {"--respawn-min-delay"},
-          "Minimum delay between respawns",
-          1,
-          0,
-          Integer.MAX_VALUE,
-          1),
-        BUILDER.ofInt(
-          "max-delay",
-          "Max delay (seconds)",
-          new String[] {"--respawn-max-delay"},
-          "Maximum delay between respawns",
-          3,
-          0,
-          Integer.MAX_VALUE,
-          1));
+      ImmutableBooleanProperty.builder()
+        .namespace(NAMESPACE)
+        .key("enabled")
+        .uiName("Enable Auto Respawn")
+        .description("Respawn automatically after death")
+        .defaultValue(true)
+        .build();
+    public static final MinMaxProperty DELAY =
+      ImmutableMinMaxProperty.builder()
+        .namespace(NAMESPACE)
+        .key("delay")
+        .minValue(0)
+        .maxValue(Integer.MAX_VALUE)
+        .minEntry(ImmutableMinMaxPropertyEntry.builder()
+          .uiName("Min delay (seconds)")
+          .description("Minimum delay between respawns")
+          .defaultValue(1)
+          .build())
+        .maxEntry(ImmutableMinMaxPropertyEntry.builder()
+          .uiName("Max delay (seconds)")
+          .description("Maximum delay between respawns")
+          .defaultValue(3)
+          .build())
+        .build();
   }
 }

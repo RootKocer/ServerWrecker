@@ -17,28 +17,28 @@
  */
 package com.soulfiremc.server.pathfinding.execution;
 
-import com.soulfiremc.server.api.event.EventUtil;
-import com.soulfiremc.server.api.event.bot.BotPreTickEvent;
 import com.soulfiremc.server.pathfinding.NodeState;
 import com.soulfiremc.server.pathfinding.RouteFinder;
 import com.soulfiremc.server.pathfinding.SFVec3i;
 import com.soulfiremc.server.pathfinding.goals.GoalScorer;
 import com.soulfiremc.server.pathfinding.graph.MinecraftGraph;
+import com.soulfiremc.server.pathfinding.graph.PathConstraint;
 import com.soulfiremc.server.pathfinding.graph.ProjectedInventory;
-import com.soulfiremc.server.pathfinding.graph.ProjectedLevel;
 import com.soulfiremc.server.protocol.BotConnection;
+import com.soulfiremc.server.protocol.bot.ControllingTask;
+import com.soulfiremc.server.util.SFBlockHelpers;
 import com.soulfiremc.server.util.TimeUtil;
 import it.unimi.dsi.fastutil.booleans.Boolean2ObjectFunction;
+import lombok.extern.slf4j.Slf4j;
+
 import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Consumer;
-import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class PathExecutor implements Consumer<BotPreTickEvent> {
+public final class PathExecutor implements ControllingTask {
   private static final int MAX_ERROR_DISTANCE = 20;
   private final Queue<WorldAction> worldActionQueue = new LinkedBlockingQueue<>();
   private final BotConnection connection;
@@ -47,7 +47,6 @@ public class PathExecutor implements Consumer<BotPreTickEvent> {
   private int totalMovements;
   private int ticks = 0;
   private int movementNumber = 1;
-  private boolean registered = false;
 
   public PathExecutor(
     BotConnection connection,
@@ -58,51 +57,56 @@ public class PathExecutor implements Consumer<BotPreTickEvent> {
     this.pathCompletionFuture = pathCompletionFuture;
   }
 
-  public static void executePathfinding(BotConnection bot, GoalScorer goalScorer,
-                                        CompletableFuture<Void> pathCompletionFuture) {
-    // Cancel the path if the bot is disconnected
-    bot.shutdownHooks().add(() -> {
-      if (!pathCompletionFuture.isDone()) {
-        pathCompletionFuture.cancel(true);
-      }
-    });
-
+  public static CompletableFuture<Void> executePathfinding(BotConnection bot, GoalScorer goalScorer, PathConstraint pathConstraint) {
     var logger = bot.logger();
     var dataManager = bot.dataManager();
-    var clientEntity = dataManager.clientEntity();
+    var clientEntity = dataManager.localPlayer();
 
     Boolean2ObjectFunction<List<WorldAction>> findPath =
       requiresRepositioning -> {
-        var level = new ProjectedLevel(
-          dataManager.currentLevel(),
-          dataManager.currentLevel()
-            .chunks()
-            .immutableCopy());
+        var level = dataManager.currentLevel()
+          .chunks()
+          .immutableCopy();
         var inventory =
-          new ProjectedInventory(dataManager.inventoryManager().playerInventory(), dataManager.clientEntity());
+          new ProjectedInventory(bot.inventoryManager().playerInventory(), dataManager.localPlayer(), dataManager.tagsState(), pathConstraint);
         var start =
           SFVec3i.fromDouble(clientEntity.pos());
+        var startBlockState = level.getBlockState(start);
+        if (SFBlockHelpers.isTopFullBlock(startBlockState.collisionShape())) {
+          // If the player is inside a block, move them up
+          start = start.add(0, 1, 0);
+        }
+
         var routeFinder =
-          new RouteFinder(new MinecraftGraph(dataManager.tagsState(), level, inventory, true, true), goalScorer);
+          new RouteFinder(new MinecraftGraph(dataManager.tagsState(), level, inventory, pathConstraint), goalScorer);
 
         logger.info("Starting calculations at: {}", start.formatXYZ());
-        var actions = routeFinder.findRoute(NodeState.forInfo(start, inventory), requiresRepositioning, pathCompletionFuture);
+        var actionsFuture = routeFinder.findRouteFuture(NodeState.forInfo(start, inventory), requiresRepositioning);
+        bot.shutdownHooks().add(() -> actionsFuture.cancel(true));
+        var actions = actionsFuture.join();
         logger.info("Calculated path with {} actions: {}", actions.size(), actions);
 
         return actions;
       };
 
+    var pathCompletionFuture = new CompletableFuture<Void>();
+
+    // Cancel the path if the bot is disconnected
+    bot.shutdownHooks().add(() -> pathCompletionFuture.cancel(true));
+
     var pathExecutor = new PathExecutor(bot, findPath, pathCompletionFuture);
     pathExecutor.submitForPathCalculation(true);
+
+    return pathCompletionFuture;
   }
 
+  @Override
   public boolean isDone() {
     return pathCompletionFuture.isDone();
   }
 
   public void submitForPathCalculation(boolean isInitial) {
     unregister();
-    connection.dataManager().controlState().resetAll();
 
     connection.scheduler().schedule(() -> {
       try {
@@ -145,18 +149,15 @@ public class PathExecutor implements Consumer<BotPreTickEvent> {
     this.worldActionQueue.clear();
     this.worldActionQueue.addAll(worldActions);
     this.totalMovements = worldActions.size();
+    this.ticks = 0;
     this.movementNumber = 1;
   }
 
   @Override
-  public void accept(BotPreTickEvent event) {
-    var connection = event.connection();
-    if (connection != this.connection) {
-      return;
-    }
-
+  public void tick() {
     // This method should not be called if the path is cancelled
-    if (!registered || isDone()) {
+    if (isDone()) {
+      unregister();
       return;
     }
 
@@ -184,7 +185,7 @@ public class PathExecutor implements Consumer<BotPreTickEvent> {
       return;
     }
 
-    if (SFVec3i.fromDouble(connection.dataManager().clientEntity().pos())
+    if (SFVec3i.fromDouble(connection.dataManager().localPlayer().pos())
       .distance(worldAction.targetPosition(connection)) > MAX_ERROR_DISTANCE) {
       connection.logger().warn("More than {} blocks away from target, this must be a mistake!", MAX_ERROR_DISTANCE);
       connection.logger().warn("Recalculating path...");
@@ -206,7 +207,7 @@ public class PathExecutor implements Consumer<BotPreTickEvent> {
       // If there are no more goals, stop
       if (worldAction == null) {
         connection.logger().info("Finished all goals!");
-        connection.dataManager().controlState().resetAll();
+        connection.controlState().resetAll();
         pathCompletionFuture.complete(null);
         unregister();
         return;
@@ -225,40 +226,26 @@ public class PathExecutor implements Consumer<BotPreTickEvent> {
     worldAction.tick(connection);
   }
 
-  public synchronized void register() {
-    if (isDone()) {
-      return;
-    }
-
-    if (registered) {
-      return;
-    }
-
-    registered = true;
-    connection.dataManager().clientEntity().controlState().incrementActivelyControlling();
-    EventUtil.runAndAssertChanged(
-      connection.eventBus(),
-      () -> connection.eventBus().registerConsumer(this, BotPreTickEvent.class));
-  }
-
-  public synchronized void unregister() {
-    if (!registered) {
-      return;
-    }
-
-    registered = false;
-    connection.dataManager().clientEntity().controlState().decrementActivelyControlling();
-    EventUtil.runAndAssertChanged(
-      connection.eventBus(),
-      () -> connection.eventBus().unregisterConsumer(this, BotPreTickEvent.class));
-  }
-
-  public void cancel() {
+  @Override
+  public void stop() {
     if (!isDone()) {
       pathCompletionFuture.cancel(true);
     }
 
     unregister();
+  }
+
+  public synchronized void register() {
+    if (isDone()) {
+      return;
+    }
+
+    connection.botControl().registerControllingTask(this);
+  }
+
+  public synchronized void unregister() {
+    connection.botControl().unregisterControllingTask(this);
+    connection.controlState().resetAll();
   }
 
   public void recalculatePath() {

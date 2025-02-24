@@ -18,6 +18,7 @@
 package com.soulfiremc.server.pathfinding;
 
 import com.soulfiremc.server.util.MathHelper;
+import com.soulfiremc.server.util.VectorHelper;
 import lombok.RequiredArgsConstructor;
 import org.cloudburstmc.math.vector.Vector3d;
 import org.cloudburstmc.math.vector.Vector3i;
@@ -28,7 +29,7 @@ import org.cloudburstmc.math.vector.Vector3i;
  * use this class.
  */
 @RequiredArgsConstructor
-public class SFVec3i {
+public final class SFVec3i {
   public static final SFVec3i ZERO = new SFVec3i(0, 0, 0);
 
   public final int x;
@@ -36,6 +37,8 @@ public class SFVec3i {
   public final int z;
   private int hashCode;
   private boolean hashCodeSet;
+  private long minecraftLong;
+  private boolean minecraftLongSet;
 
   public static SFVec3i fromDouble(Vector3d vec) {
     return fromInt(vec.toInt());
@@ -67,6 +70,10 @@ public class SFVec3i {
     return this.x == other.x && this.y == other.y && this.z == other.z;
   }
 
+  public boolean minecraftEquals(SFVec3i vec) {
+    return asMinecraftLong() == vec.asMinecraftLong();
+  }
+
   @Override
   public int hashCode() {
     if (!hashCodeSet) {
@@ -75,6 +82,15 @@ public class SFVec3i {
     }
 
     return hashCode;
+  }
+
+  public long asMinecraftLong() {
+    if (!minecraftLongSet) {
+      minecraftLong = VectorHelper.asLong(x, y, z);
+      minecraftLongSet = true;
+    }
+
+    return minecraftLong;
   }
 
   public SFVec3i add(int x, int y, int z) {
@@ -87,6 +103,10 @@ public class SFVec3i {
 
   public SFVec3i sub(int x, int y, int z) {
     return new SFVec3i(this.x - x, this.y - y, this.z - z);
+  }
+
+  public SFVec3i sub(SFVec3i other) {
+    return sub(other.x, other.y, other.z);
   }
 
   public Vector3i toVector3i() {

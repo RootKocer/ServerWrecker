@@ -19,7 +19,7 @@ package com.soulfiremc.generator.generators;
 
 import com.soulfiremc.generator.util.GeneratorConstants;
 import com.soulfiremc.generator.util.ResourceHelper;
-import lombok.SneakyThrows;
+import net.lenni0451.reflect.stream.RStream;
 import net.minecraft.world.level.material.MapColor;
 
 public class MapColorJavaGenerator implements IDataGenerator {
@@ -28,25 +28,22 @@ public class MapColorJavaGenerator implements IDataGenerator {
     return "java/MapColor.java";
   }
 
-  @SneakyThrows
   @Override
   public String generateDataJson() {
-    var base = ResourceHelper.getResourceAsString("/templates/MapColor.java");
-    var registryField = MapColor.class.getDeclaredField("MATERIAL_COLORS");
-    registryField.setAccessible(true);
-    var registry = (MapColor[]) registryField.get(null);
-    var colField = MapColor.class.getDeclaredField("col");
-    colField.setAccessible(true);
+    var registry = RStream.of(MapColor.class).fields().by("MATERIAL_COLORS").<MapColor[]>get();
     var colorArray = new String[registry.length];
     for (var i = 0; i < registry.length; i++) {
-      if (registry[i] == null) {
+      var mapColor = registry[i];
+      if (mapColor == null) {
         colorArray[i] = "null";
         continue;
       }
 
-      colorArray[i] = "new MapColor(%d, %s)".formatted(i, colField.get(registry[i]));
+      var col = RStream.of(mapColor).fields().by("col").<Integer>get();
+      colorArray[i] = "new MapColor(%d, %s)".formatted(i, col);
     }
 
+    var base = ResourceHelper.getResourceAsString("/templates/MapColor.java");
     return base.replace(
       GeneratorConstants.VALUES_REPLACE,
       "public static final MapColor[] COLORS = new MapColor[] {\n    %s\n  };".formatted(String.join(",\n    ", colorArray)));

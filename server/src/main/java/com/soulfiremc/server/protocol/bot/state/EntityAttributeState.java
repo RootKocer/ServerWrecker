@@ -17,16 +17,16 @@
  */
 package com.soulfiremc.server.protocol.bot.state;
 
-import com.soulfiremc.server.data.Attribute;
 import com.soulfiremc.server.data.AttributeType;
 import com.soulfiremc.server.data.EquipmentSlot;
-import com.soulfiremc.server.data.ModifierOperation;
 import com.soulfiremc.server.protocol.bot.container.SFItemStack;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
-import java.util.Map;
 import lombok.Data;
-import org.geysermc.mcprotocollib.protocol.data.game.item.component.DataComponentType;
+import org.geysermc.mcprotocollib.protocol.data.game.entity.attribute.AttributeModifier;
+import org.geysermc.mcprotocollib.protocol.data.game.item.component.DataComponentTypes;
 import org.geysermc.mcprotocollib.protocol.data.game.item.component.ItemAttributeModifiers;
+
+import java.util.Map;
 
 @Data
 public class EntityAttributeState {
@@ -37,14 +37,18 @@ public class EntityAttributeState {
       case ANY -> true;
       case MAIN_HAND -> comparedTo == EquipmentSlot.MAINHAND;
       case OFF_HAND -> comparedTo == EquipmentSlot.OFFHAND;
-      case HAND -> comparedTo == EquipmentSlot.MAINHAND || comparedTo == EquipmentSlot.OFFHAND;
+      case HAND -> comparedTo.isHand();
       case FEET -> comparedTo == EquipmentSlot.FEET;
       case LEGS -> comparedTo == EquipmentSlot.LEGS;
       case CHEST -> comparedTo == EquipmentSlot.CHEST;
       case HEAD -> comparedTo == EquipmentSlot.HEAD;
-      case ARMOR -> comparedTo == EquipmentSlot.CHEST || comparedTo == EquipmentSlot.LEGS || comparedTo == EquipmentSlot.FEET;
-      case BODY -> comparedTo == EquipmentSlot.HEAD || comparedTo == EquipmentSlot.CHEST || comparedTo == EquipmentSlot.LEGS || comparedTo == EquipmentSlot.FEET;
+      case ARMOR -> comparedTo.isArmor();
+      case BODY -> comparedTo == EquipmentSlot.BODY;
     };
+  }
+
+  public boolean hasAttribute(AttributeType type) {
+    return attributeStore.containsKey(type);
   }
 
   public AttributeState getOrCreateAttribute(AttributeType type) {
@@ -52,25 +56,21 @@ public class EntityAttributeState {
   }
 
   public void putItemModifiers(SFItemStack itemStack, EquipmentSlot slot) {
-    var components = itemStack.components();
-    for (var modifier : components.get(DataComponentType.ATTRIBUTE_MODIFIERS).getModifiers()) {
+    var components = itemStack.getDataComponents();
+    for (var modifier : components.get(DataComponentTypes.ATTRIBUTE_MODIFIERS).getModifiers()) {
       if (isNotPartOf(modifier.getSlot(), slot)) {
         continue;
       }
 
       getOrCreateAttribute(AttributeType.REGISTRY.getById(modifier.getAttribute()))
         .modifiers()
-        .put(modifier.getModifier().getId(), new Attribute.Modifier(modifier.getModifier().getId(), modifier.getModifier().getAmount(), switch (modifier.getModifier().getOperation()) {
-          case ADD -> ModifierOperation.ADD_VALUE;
-          case ADD_MULTIPLIED_BASE -> ModifierOperation.ADD_MULTIPLIED_BASE;
-          case ADD_MULTIPLIED_TOTAL -> ModifierOperation.ADD_MULTIPLIED_TOTAL;
-        }));
+        .put(modifier.getModifier().getId(), new AttributeModifier(modifier.getModifier().getId(), modifier.getModifier().getAmount(), modifier.getModifier().getOperation()));
     }
   }
 
   public void removeItemModifiers(SFItemStack itemStack, EquipmentSlot slot) {
-    var components = itemStack.components();
-    for (var modifier : components.get(DataComponentType.ATTRIBUTE_MODIFIERS).getModifiers()) {
+    var components = itemStack.getDataComponents();
+    for (var modifier : components.get(DataComponentTypes.ATTRIBUTE_MODIFIERS).getModifiers()) {
       if (isNotPartOf(modifier.getSlot(), slot)) {
         continue;
       }
@@ -79,5 +79,21 @@ public class EntityAttributeState {
         .modifiers()
         .remove(modifier.getModifier().getId());
     }
+  }
+
+  public void assignAllValues(EntityAttributeState other) {
+    other.attributeStore.forEach((type, state) -> {
+      var attribute = getOrCreateAttribute(type);
+      attribute.baseValue(state.baseValue());
+      attribute.modifiers().clear();
+      attribute.modifiers().putAll(state.modifiers());
+    });
+  }
+
+  public void assignBaseValues(EntityAttributeState other) {
+    other.attributeStore.forEach((type, state) -> {
+      var attribute = getOrCreateAttribute(type);
+      attribute.baseValue(state.baseValue());
+    });
   }
 }

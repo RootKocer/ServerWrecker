@@ -17,97 +17,107 @@
  */
 package com.soulfiremc.server.plugins;
 
-import com.soulfiremc.server.api.PluginHelper;
-import com.soulfiremc.server.api.SoulFireAPI;
-import com.soulfiremc.server.api.event.bot.BotDisconnectedEvent;
-import com.soulfiremc.server.api.event.lifecycle.SettingsRegistryInitEvent;
+import com.soulfiremc.server.api.InternalPlugin;
+import com.soulfiremc.server.api.PluginInfo;
+import com.soulfiremc.server.api.event.attack.AttackTickEvent;
+import com.soulfiremc.server.api.event.lifecycle.InstanceSettingsRegistryInitEvent;
 import com.soulfiremc.server.settings.lib.SettingsObject;
-import com.soulfiremc.server.settings.property.BooleanProperty;
-import com.soulfiremc.server.settings.property.MinMaxPropertyLink;
-import com.soulfiremc.server.settings.property.Property;
-import com.soulfiremc.server.util.RandomUtil;
-import java.util.concurrent.TimeUnit;
+import com.soulfiremc.server.settings.property.*;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import net.lenni0451.lambdaevents.EventHandler;
+import org.pf4j.Extension;
 
-public class AutoReconnect implements InternalPlugin {
+import java.util.List;
+import java.util.concurrent.TimeUnit;
+
+@Extension
+public class AutoReconnect extends InternalPlugin {
+  public AutoReconnect() {
+    super(new PluginInfo(
+      "auto-reconnect",
+      "1.0.0",
+      "Automatically reconnects bots when they time out or are kicked",
+      "AlexProgrammerDE",
+      "GPL-3.0",
+      "https://soulfiremc.com"
+    ));
+  }
+
   @EventHandler
-  public static void onSettingsRegistryInit(SettingsRegistryInitEvent event) {
-    event.settingsRegistry().addClass(AutoReconnectSettings.class, "Auto Reconnect");
+  public void onSettingsRegistryInit(InstanceSettingsRegistryInitEvent event) {
+    event.settingsRegistry().addPluginPage(AutoReconnectSettings.class, "Auto Reconnect", this, "refresh-ccw", AutoReconnectSettings.ENABLED);
   }
 
-  @Override
-  public void onLoad() {
-    SoulFireAPI.registerListeners(AutoReconnect.class);
-    PluginHelper.registerBotEventConsumer(BotDisconnectedEvent.class, this::onDisconnect);
-  }
+  @EventHandler
+  public void onAttackTick(AttackTickEvent event) {
+    var instanceManager = event.instanceManager();
+    for (var entries : List.copyOf(instanceManager.botConnections().entrySet())) {
+      var bot = entries.getValue();
+      if (!bot.session().isDisconnected() || bot.explicitlyShutdown()) {
+        continue;
+      }
 
-  public void onDisconnect(BotDisconnectedEvent event) {
-    var connection = event.connection();
-    var settingsHolder = connection.settingsHolder();
-    if (!settingsHolder.get(AutoReconnectSettings.ENABLED)
-      || connection.attackManager().attackState().isInactive()) {
-      return;
+      var settingsSource = bot.settingsSource();
+      if (!settingsSource.get(AutoReconnectSettings.ENABLED)) {
+        continue;
+      }
+
+      // Ensure this bot is not reconnected twice
+      instanceManager.botConnections().remove(entries.getKey());
+
+      instanceManager
+        .scheduler()
+        .schedule(
+          () -> {
+            var eventLoopGroup = bot.session().eventLoopGroup();
+            if (eventLoopGroup.isShuttingDown()
+              || eventLoopGroup.isShutdown()
+              || eventLoopGroup.isTerminated()) {
+              return;
+            }
+
+            bot.gracefulDisconnect();
+            var newConnection = bot.factory().prepareConnection();
+
+            instanceManager
+              .botConnections()
+              .put(bot.accountProfileId(), newConnection);
+
+            newConnection.connect();
+          },
+          settingsSource.getRandom(AutoReconnectSettings.DELAY).getAsLong(),
+          TimeUnit.SECONDS);
     }
-
-    connection
-      .attackManager()
-      .scheduler()
-      .schedule(
-        () -> {
-          var eventLoopGroup = connection.session().eventLoopGroup();
-          if (eventLoopGroup.isShuttingDown()
-            || eventLoopGroup.isShutdown()
-            || eventLoopGroup.isTerminated()) {
-            return;
-          }
-
-          connection.gracefulDisconnect();
-          var newConnection = connection.factory().prepareConnection();
-
-          connection
-            .attackManager()
-            .botConnections()
-            .put(connection.connectionId(), newConnection);
-
-          newConnection.connect();
-        },
-        RandomUtil.getRandomInt(
-          settingsHolder.get(AutoReconnectSettings.DELAY.min()),
-          settingsHolder.get(AutoReconnectSettings.DELAY.max())),
-        TimeUnit.SECONDS);
   }
 
   @NoArgsConstructor(access = AccessLevel.PRIVATE)
   private static class AutoReconnectSettings implements SettingsObject {
-    private static final Property.Builder BUILDER = Property.builder("auto-reconnect");
+    private static final String NAMESPACE = "auto-reconnect";
     public static final BooleanProperty ENABLED =
-      BUILDER.ofBoolean(
-        "enabled",
-        "Enable Auto Reconnect",
-        new String[] {"--auto-reconnect"},
-        "Reconnect a bot when it times out/is kicked",
-        true);
-    public static final MinMaxPropertyLink DELAY =
-      new MinMaxPropertyLink(
-        BUILDER.ofInt(
-          "min-delay",
-          "Min delay (seconds)",
-          new String[] {"--reconnect-min-delay"},
-          "Minimum delay between reconnects",
-          1,
-          0,
-          Integer.MAX_VALUE,
-          1),
-        BUILDER.ofInt(
-          "max-delay",
-          "Max delay (seconds)",
-          new String[] {"--reconnect-max-delay"},
-          "Maximum delay between reconnects",
-          5,
-          0,
-          Integer.MAX_VALUE,
-          1));
+      ImmutableBooleanProperty.builder()
+        .namespace(NAMESPACE)
+        .key("enabled")
+        .uiName("Enable Auto Reconnect")
+        .description("Reconnect a bot when it times out/is kicked")
+        .defaultValue(true)
+        .build();
+    public static final MinMaxProperty DELAY =
+      ImmutableMinMaxProperty.builder()
+        .namespace(NAMESPACE)
+        .key("delay")
+        .minValue(0)
+        .maxValue(Integer.MAX_VALUE)
+        .minEntry(ImmutableMinMaxPropertyEntry.builder()
+          .uiName("Min delay (seconds)")
+          .description("Minimum delay between reconnects")
+          .defaultValue(1)
+          .build())
+        .maxEntry(ImmutableMinMaxPropertyEntry.builder()
+          .uiName("Max delay (seconds)")
+          .description("Maximum delay between reconnects")
+          .defaultValue(5)
+          .build())
+        .build();
   }
 }

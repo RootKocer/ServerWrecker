@@ -15,16 +15,17 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-package com.soulfiremc.data;
+package com.soulfiremc.server.data;
 
 import com.google.gson.JsonObject;
 import com.google.gson.TypeAdapter;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
+import net.kyori.adventure.key.Key;
+
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
-import net.kyori.adventure.key.Key;
 
 @SuppressWarnings("unused")
 public record BlockType(
@@ -32,12 +33,18 @@ public record BlockType(
   Key key,
   float destroyTime,
   float explosionResistance,
+  float friction,
+  float jumpFactor,
+  float speedFactor,
   boolean air,
   boolean fallingBlock,
+  boolean iceBlock,
+  boolean fenceGateBlock,
+  boolean trapDoorBlock,
+  boolean bedBlock,
   boolean replaceable,
   boolean requiresCorrectToolForDrops,
-  FluidType fluidType,
-  List<LootPoolEntry> lootTableData,
+  boolean blocksMotion,
   OffsetData offsetData,
   BlockStates statesData) implements RegistryValue<BlockType> {
   public static final TypeAdapter<FluidType> CUSTOM_FLUID_TYPE = new TypeAdapter<>() {
@@ -67,12 +74,7 @@ public record BlockType(
   }
 
   public static BlockType register(String key) {
-    var instance = GsonDataHelper.fromJson("minecraft/blocks.json", key, BlockType.class, Map.of(
-      FluidType.class,
-      CUSTOM_FLUID_TYPE
-    ));
-
-    return REGISTRY.register(instance);
+    return REGISTRY.register(GsonDataHelper.fromJson("minecraft/blocks.json", key, BlockType.class));
   }
 
   @Override
@@ -89,6 +91,11 @@ public record BlockType(
   @Override
   public int hashCode() {
     return id;
+  }
+
+  @Override
+  public Registry<BlockType> registry() {
+    return REGISTRY;
   }
 
   public record OffsetData(

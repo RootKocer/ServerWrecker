@@ -18,9 +18,11 @@
 package com.soulfiremc.server.data;
 
 import com.google.gson.JsonArray;
+import net.kyori.adventure.key.Key;
+
 import java.util.ArrayList;
 import java.util.List;
-import net.kyori.adventure.key.Key;
+import java.util.Map;
 
 public record BlockStates(BlockState defaultState, List<BlockState> possibleStates) {
   public static BlockStates fromJsonArray(BlockType blockType, Key key, JsonArray array) {
@@ -32,9 +34,15 @@ public record BlockStates(BlockState defaultState, List<BlockState> possibleStat
       var stateId = stateObject.get("id").getAsInt();
       var defaultStateValue = stateObject.get("default") != null;
 
-      var properties = new BlockStateProperties(stateObject.getAsJsonObject("properties"));
+      var fluidState = GsonDataHelper.createGson(Map.of(
+        FluidType.class,
+        BlockType.CUSTOM_FLUID_TYPE,
+        BlockPropertiesHolder.class,
+        BlockPropertiesHolder.BLOCK_STATE_PROPERTIES
+      )).fromJson(stateObject.get("fluidState"), FluidState.class);
+      var properties = new BlockPropertiesHolder(stateObject.getAsJsonObject("properties"));
 
-      var blockState = new BlockState(stateId, defaultStateValue, properties, blockType, key, i);
+      var blockState = new BlockState(stateId, defaultStateValue, fluidState, properties, blockType, key, i);
 
       if (defaultStateValue) {
         defaultState = blockState;

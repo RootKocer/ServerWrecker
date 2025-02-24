@@ -17,16 +17,9 @@
  */
 package com.soulfiremc.server.util;
 
-import com.soulfiremc.settings.proxy.SFProxy;
-import com.soulfiremc.util.ReactorHttpHelper;
+import com.soulfiremc.server.proxy.SFProxy;
 import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpMethod;
-import java.io.IOException;
-import java.time.Duration;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import net.lenni0451.commons.httpclient.HttpClient;
 import net.lenni0451.commons.httpclient.HttpResponse;
@@ -40,6 +33,13 @@ import org.jetbrains.annotations.NotNull;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.netty.ByteBufFlux;
+
+import java.io.IOException;
+import java.time.Duration;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 @Slf4j
 public class LenniHttpHelper {
@@ -86,15 +86,9 @@ public class LenniHttpHelper {
             .request(HttpMethod.valueOf(httpRequest.getMethod()))
             .uri(httpRequest.getURL().toURI());
 
-        reactor.netty.http.client.HttpClient.ResponseReceiver<?> receiver;
-        if (httpRequest instanceof HttpContentRequest contentRequest) {
-          receiver =
-            base.send(
-              ByteBufFlux.fromInbound(
-                Flux.just(Objects.requireNonNull(contentRequest.getContent()).getAsBytes())));
-        } else {
-          receiver = base;
-        }
+        var receiver = httpRequest instanceof HttpContentRequest contentRequest
+          ? base.send(ByteBufFlux.fromInbound(Flux.just(Objects.requireNonNull(contentRequest.getContent()).getAsBytes())))
+          : base;
 
         return receiver
           .responseSingle(
@@ -111,7 +105,7 @@ public class LenniHttpHelper {
                   .asByteArray()
                   .mapNotNull(bytes -> new HttpResponse(urlObj, code, bytes, responseHeaders))
                   .switchIfEmpty(
-                    Mono.just(new HttpResponse(urlObj, code, null, responseHeaders)));
+                    Mono.just(new HttpResponse(urlObj, code, (byte[]) null, responseHeaders)));
               } catch (Exception e) {
                 log.error("Error while handling response", e);
                 return Mono.error(e);

@@ -19,8 +19,10 @@ package com.soulfiremc.server.protocol.bot.block;
 
 import com.soulfiremc.server.data.BlockState;
 import com.soulfiremc.server.data.BlockType;
-import java.util.Collection;
 import lombok.ToString;
+
+import java.util.Collection;
+import java.util.List;
 
 @ToString
 public class GlobalBlockPalette {
@@ -46,5 +48,9 @@ public class GlobalBlockPalette {
 
   public BlockState getBlockStateForStateId(int id) {
     return stateIdToBlockState[id];
+  }
+
+  public Collection<BlockState> getBlockStates() {
+    return List.of(stateIdToBlockState);
   }
 }

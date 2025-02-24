@@ -17,27 +17,26 @@
  */
 package com.soulfiremc.server.protocol;
 
-import com.soulfiremc.server.AttackManager;
-import com.soulfiremc.server.api.event.attack.BotConnectionInitEvent;
+import com.soulfiremc.server.InstanceManager;
+import com.soulfiremc.server.account.MinecraftAccount;
+import com.soulfiremc.server.api.SoulFireAPI;
+import com.soulfiremc.server.api.event.bot.BotConnectionInitEvent;
 import com.soulfiremc.server.protocol.netty.ResolveUtil;
-import com.soulfiremc.server.settings.BotSettings;
-import com.soulfiremc.server.settings.lib.SettingsHolder;
-import com.soulfiremc.settings.account.MinecraftAccount;
-import com.soulfiremc.settings.proxy.SFProxy;
+import com.soulfiremc.server.proxy.SFProxy;
+import com.soulfiremc.server.settings.instance.BotSettings;
+import com.soulfiremc.server.settings.lib.InstanceSettingsSource;
 import com.viaversion.viaversion.api.protocol.version.ProtocolVersion;
 import io.netty.channel.EventLoopGroup;
-import java.util.UUID;
+import org.geysermc.mcprotocollib.network.BuiltinFlags;
 import org.geysermc.mcprotocollib.protocol.MinecraftProtocol;
 import org.geysermc.mcprotocollib.protocol.data.ProtocolState;
 import org.slf4j.Logger;
 
 public record BotConnectionFactory(
-  AttackManager attackManager,
-  UUID botConnectionId,
+  InstanceManager instanceManager,
   ResolveUtil.ResolvedAddress resolvedAddress,
-  SettingsHolder settingsHolder,
+  InstanceSettingsSource settingsSource,
   Logger logger,
-  MinecraftProtocol protocol,
   MinecraftAccount minecraftAccount,
   ProtocolVersion protocolVersion,
   SFProxy proxyData,
@@ -47,11 +46,16 @@ public record BotConnectionFactory(
   }
 
   public BotConnection prepareConnectionInternal(ProtocolState targetState) {
+    var protocol = new MinecraftProtocol();
+
+    // Make sure this options is set to false, we have our own listeners
+    protocol.setUseDefaultListeners(false);
+
     var botConnection =
       new BotConnection(
         this,
-        attackManager,
-        settingsHolder,
+        instanceManager,
+        settingsSource,
         logger,
         protocol,
         resolvedAddress,
@@ -62,14 +66,14 @@ public record BotConnectionFactory(
         eventLoopGroup);
 
     var session = botConnection.session();
-    session.setConnectTimeout(settingsHolder.get(BotSettings.CONNECT_TIMEOUT));
-    session.setReadTimeout(settingsHolder.get(BotSettings.READ_TIMEOUT));
-    session.setWriteTimeout(settingsHolder.get(BotSettings.WRITE_TIMEOUT));
+    session.setFlag(BuiltinFlags.CLIENT_CONNECT_TIMEOUT, settingsSource.get(BotSettings.CONNECT_TIMEOUT));
+    session.setFlag(BuiltinFlags.READ_TIMEOUT, settingsSource.get(BotSettings.READ_TIMEOUT));
+    session.setFlag(BuiltinFlags.WRITE_TIMEOUT, settingsSource.get(BotSettings.WRITE_TIMEOUT));
 
     session.addListener(new SFBaseListener(botConnection, targetState));
     session.addListener(new SFSessionListener(botConnection));
 
-    attackManager.eventBus().call(new BotConnectionInitEvent(botConnection));
+    SoulFireAPI.postEvent(new BotConnectionInitEvent(botConnection));
 
     return botConnection;
   }

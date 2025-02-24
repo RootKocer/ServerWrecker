@@ -17,12 +17,16 @@
  */
 package com.soulfiremc.server.pathfinding.execution;
 
+import com.google.common.math.DoubleMath;
 import com.soulfiremc.server.pathfinding.SFVec3i;
 import com.soulfiremc.server.protocol.BotConnection;
+import com.soulfiremc.server.protocol.bot.state.entity.LocalPlayer;
 import com.soulfiremc.server.util.MathHelper;
 import com.soulfiremc.server.util.VectorHelper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.cloudburstmc.math.vector.Vector2d;
+import org.cloudburstmc.math.vector.Vector3d;
 import org.geysermc.mcprotocollib.protocol.data.game.entity.RotationOrigin;
 
 @Slf4j
@@ -33,27 +37,32 @@ public final class MovementAction implements WorldAction {
   // Corner jumps normally require you to stand closer to the block to jump
   private final boolean walkFewTicksNoJump;
   private boolean didLook = false;
-  private boolean lockYaw = false;
+  private boolean lockYRot = false;
+  private boolean wasStill = false;
   private int noJumpTicks = 0;
 
   @Override
   public boolean isCompleted(BotConnection connection) {
-    var clientEntity = connection.dataManager().clientEntity();
+    var clientEntity = connection.dataManager().localPlayer();
     var botPosition = clientEntity.pos();
     var level = connection.dataManager().currentLevel();
 
     var blockMeta = level.getBlockState(blockPosition);
-    var targetMiddleBlock = VectorHelper.topMiddleOfBlock(blockPosition.toVector3d(), blockMeta);
-    if (MathHelper.isOutsideTolerance(botPosition.getY(), targetMiddleBlock.getY(), 0.2)) {
+    var targetMiddleBlock = VectorHelper.topMiddleOfBlock(blockPosition, blockMeta);
+    if (MathHelper.isOutsideTolerance(botPosition.getY(), targetMiddleBlock.getY(), 0.25)) {
       // We want to be on the same Y level
       return false;
     } else {
-      var halfDiagonal = clientEntity.boundingBox().diagonalXZLength() / 2;
-
-      // Leave more space to allow falling
-      var adjustedHalfDiagonal = halfDiagonal - 0.05;
-      return botPosition.distance(targetMiddleBlock) < adjustedHalfDiagonal;
+      return isAtTargetXZ(clientEntity, botPosition, targetMiddleBlock);
     }
+  }
+
+  private boolean isAtTargetXZ(LocalPlayer clientEntity, Vector3d botPosition, Vector3d targetMiddleBlock) {
+    var halfDiagonal = clientEntity.getBoundingBox().minXZ() / 2;
+
+    // Leave more space to allow falling
+    var adjustedHalfDiagonal = halfDiagonal - 0.1;
+    return botPosition.distance(targetMiddleBlock) < adjustedHalfDiagonal;
   }
 
   @Override
@@ -63,36 +72,54 @@ public final class MovementAction implements WorldAction {
 
   @Override
   public void tick(BotConnection connection) {
-    var clientEntity = connection.dataManager().clientEntity();
-    clientEntity.controlState().resetAll();
+    var clientEntity = connection.dataManager().localPlayer();
+    connection.controlState().resetAll();
 
     var level = connection.dataManager().currentLevel();
 
     var blockMeta = level.getBlockState(blockPosition);
-    var targetMiddleBlock = VectorHelper.topMiddleOfBlock(blockPosition.toVector3d(), blockMeta);
+    var targetMiddleBlock = VectorHelper.topMiddleOfBlock(blockPosition, blockMeta);
 
-    var previousYaw = clientEntity.yaw();
+    var previousYRot = clientEntity.yRot();
     clientEntity.lookAt(RotationOrigin.EYES, targetMiddleBlock);
-    clientEntity.pitch(0);
-    var newYaw = clientEntity.yaw();
+    clientEntity.setXRot(0);
+    var newYRot = clientEntity.yRot();
 
-    var yawDifference = Math.abs(MathHelper.wrapDegrees(newYaw - previousYaw));
+    var yRotDifference = Math.abs(MathHelper.wrapDegrees(newYRot - previousYRot));
 
-    // We should only set the yaw once to the server to prevent the bot looking weird due to
+    // We should only set the yRot once to the server to prevent the bot looking weird due to
     // inaccuracy
     if (!didLook) {
       didLook = true;
-    } else if (yawDifference > 5 || lockYaw) {
-      lockYaw = true;
-      clientEntity.lastYaw(newYaw);
+    } else if (yRotDifference > 5 || lockYRot) {
+      lockYRot = true;
+      clientEntity.lastYRot(newYRot);
     }
 
-    clientEntity.controlState().forward(true);
-
     var botPosition = clientEntity.pos();
-    if (targetMiddleBlock.getY() - STEP_HEIGHT > botPosition.getY()
-      && shouldJump()) {
-      clientEntity.controlState().jumping(true);
+    var needsJump = targetMiddleBlock.getY() - STEP_HEIGHT > botPosition.getY();
+    if (needsJump) {
+      // Make sure not to move if we have still other motion going on
+      if (!wasStill) {
+        var deltaMovementXZ = VectorHelper.toVector2dXZ(clientEntity.deltaMovement());
+        var isBaseGravity = DoubleMath.fuzzyEquals(clientEntity.deltaMovement().getY(), -clientEntity.getEntityBaseGravity(), 0.1);
+        var isStill = deltaMovementXZ.equals(Vector2d.ZERO);
+        var isMovingRoughlyTowardsBlock = !deltaMovementXZ.equals(Vector2d.ZERO)
+          && deltaMovementXZ.normalize().dot(VectorHelper.toVector2dXZ(targetMiddleBlock.sub(clientEntity.pos())).normalize()) > 0.8;
+        if (isBaseGravity && (isStill || isMovingRoughlyTowardsBlock)) {
+          wasStill = true;
+        } else {
+          return;
+        }
+      }
+
+      if (shouldJump()) {
+        connection.controlState().jumping(true);
+      }
+    }
+
+    if (!isAtTargetXZ(clientEntity, botPosition, targetMiddleBlock)) {
+      connection.controlState().forward(true);
     }
   }
 
@@ -101,7 +128,7 @@ public final class MovementAction implements WorldAction {
       return true;
     }
 
-    if (noJumpTicks < 2) {
+    if (noJumpTicks < 3) {
       noJumpTicks++;
       return false;
     } else {

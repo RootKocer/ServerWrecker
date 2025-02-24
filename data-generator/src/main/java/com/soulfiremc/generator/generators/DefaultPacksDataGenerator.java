@@ -20,10 +20,6 @@ package com.soulfiremc.generator.generators;
 import com.mojang.serialization.DynamicOps;
 import com.soulfiremc.generator.util.MCHelper;
 import io.netty.buffer.Unpooled;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.util.Optional;
-import java.util.zip.GZIPOutputStream;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import net.minecraft.core.RegistrationInfo;
@@ -35,6 +31,11 @@ import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.RegistryDataLoader;
 import net.minecraft.server.RegistryLayer;
 import net.minecraft.server.packs.repository.KnownPack;
+
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.util.Optional;
+import java.util.zip.GZIPOutputStream;
 
 @Slf4j
 public class DefaultPacksDataGenerator implements IDataGenerator {
@@ -55,8 +56,8 @@ public class DefaultPacksDataGenerator implements IDataGenerator {
     RegistryDataLoader.RegistryData<T> registryData,
     RegistryAccess registryAccess
   ) {
-    var registry = registryAccess.registry(registryData.key()).orElseThrow();
-    friendlyByteBuf.writeCollection(registry.holders().toList(), (buf, holder) -> {
+    var registry = registryAccess.lookupOrThrow(registryData.key());
+    friendlyByteBuf.writeCollection(registry.listElements().toList(), (buf, holder) -> {
       var holderPack = registry.registrationInfo(holder.key()).flatMap(RegistrationInfo::knownPackInfo).orElseThrow();
       var holderData = registryData.elementCodec()
         .encodeStart(ops, holder.value())

@@ -17,8 +17,9 @@
  */
 package com.soulfiremc.server.api.event.lifecycle;
 
-import com.soulfiremc.server.ServerCommandManager;
+import com.soulfiremc.server.SoulFireServer;
 import com.soulfiremc.server.api.event.SoulFireGlobalEvent;
+import com.soulfiremc.server.command.ServerCommandManager;
 
 /**
  * Add yourself to the command manager to add custom commands. At this stage, all built-in commands
@@ -26,5 +27,5 @@ import com.soulfiremc.server.api.event.SoulFireGlobalEvent;
  *
  * @param commandManager The command manager.
  */
-public record CommandManagerInitEvent(ServerCommandManager commandManager)
+public record CommandManagerInitEvent(SoulFireServer soulFireServer, ServerCommandManager commandManager)
   implements SoulFireGlobalEvent {}

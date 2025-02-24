@@ -21,43 +21,46 @@ import com.soulfiremc.server.data.BlockState;
 import com.soulfiremc.server.data.BlockType;
 import com.soulfiremc.server.pathfinding.SFVec3i;
 import com.soulfiremc.server.pathfinding.execution.PathExecutor;
-import com.soulfiremc.server.pathfinding.goals.BreakAnyBlockPosGoal;
+import com.soulfiremc.server.pathfinding.goals.BreakBlockPosGoal;
+import com.soulfiremc.server.pathfinding.goals.CompositeGoal;
+import com.soulfiremc.server.pathfinding.graph.PathConstraint;
 import com.soulfiremc.server.protocol.BotConnection;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.function.Predicate;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.HashSet;
+import java.util.Set;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
+
 @Slf4j
 @RequiredArgsConstructor
-public class CollectBlockController {
+public final class CollectBlockController {
   private final Predicate<BlockType> blockTypeChecker;
   private final int requestedAmount;
   private final int maxRadius;
   private int collectedAmount;
 
-  public static Set<SFVec3i> searchWithinRadiusLayered(BotConnection botConnection, Predicate<BlockState> checker, int radius) {
-    var clientEntity = botConnection.dataManager().clientEntity();
+  public static Set<SFVec3i> searchWithinRadius(BotConnection botConnection, Predicate<BlockState> checker, int radius) {
+    var clientEntity = botConnection.dataManager().localPlayer();
     var level = clientEntity.level();
     var rootPosition = SFVec3i.fromInt(clientEntity.pos().toInt());
 
+    var minY = Math.max(level.getMinY(), rootPosition.y - radius);
+    var maxY = Math.min(level.getMaxY(), rootPosition.y + radius);
     var list = new HashSet<SFVec3i>();
-    for (var y = -radius; y <= radius; y++) {
-      if (level.isOutsideBuildHeight(rootPosition.y + y)) {
-        continue;
-      }
+    for (var x = -radius; x <= radius; x++) {
+      for (var z = -radius; z <= radius; z++) {
+        var blockX = rootPosition.x + x;
+        var blockZ = rootPosition.z + z;
+        if (!level.isChunkPositionLoaded(blockX, blockZ)) {
+          continue;
+        }
 
-      for (var x = -radius; x <= radius; x++) {
-        for (var z = -radius; z <= radius; z++) {
-          var blockPos = rootPosition.add(x, y, z);
+        for (var y = minY; y <= maxY; y++) {
+          var blockPos = new SFVec3i(blockX, y, blockZ);
           var blockState = level.getBlockState(blockPos);
-          if (blockState.blockType() == BlockType.VOID_AIR) {
-            continue;
-          }
-
-          if (checker.test(blockState)) {
+          if (!blockState.blockType().air() && checker.test(blockState)) {
             list.add(blockPos);
           }
         }
@@ -69,8 +72,10 @@ public class CollectBlockController {
 
   public void start(BotConnection bot) {
     while (collectedAmount < requestedAmount) {
-      log.info("Searching for blocks to collect");
-      var blockPos = searchWithinRadiusLayered(bot, blockState -> blockTypeChecker.test(blockState.blockType()), maxRadius);
+      log.info("Collecting block {}/{}", collectedAmount, requestedAmount);
+
+      log.info("Searching for block within radius {}", maxRadius);
+      var blockPos = searchWithinRadius(bot, blockState -> blockTypeChecker.test(blockState.blockType()), maxRadius);
 
       if (blockPos.isEmpty()) {
         throw new IllegalStateException("Could not find matching block within radius " + maxRadius);
@@ -78,11 +83,8 @@ public class CollectBlockController {
 
       log.info("Found {} possible blocks to collect", blockPos.size());
 
-      var pathFuture = new CompletableFuture<Void>();
-      PathExecutor.executePathfinding(bot, new BreakAnyBlockPosGoal(blockPos), pathFuture);
-
       try {
-        pathFuture.get();
+        PathExecutor.executePathfinding(bot, new CompositeGoal(blockPos.stream().map(BreakBlockPosGoal::new).collect(Collectors.toUnmodifiableSet())), new PathConstraint(bot)).get();
         collectedAmount++;
       } catch (Exception e) {
         log.error("Got exception while executing path, aborting", e);

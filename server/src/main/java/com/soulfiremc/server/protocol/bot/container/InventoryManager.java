@@ -19,13 +19,9 @@ package com.soulfiremc.server.protocol.bot.container;
 
 import com.soulfiremc.server.data.EquipmentSlot;
 import com.soulfiremc.server.protocol.BotConnection;
-import com.soulfiremc.server.protocol.bot.SessionDataManager;
 import it.unimi.dsi.fastutil.ints.Int2ObjectArrayMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
-import java.util.EnumMap;
-import java.util.Map;
-import java.util.concurrent.locks.ReentrantLock;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.ToString;
@@ -34,41 +30,20 @@ import org.geysermc.mcprotocollib.protocol.data.game.inventory.ContainerActionTy
 import org.geysermc.mcprotocollib.protocol.data.game.item.ItemStack;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.inventory.ServerboundContainerClickPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.inventory.ServerboundContainerClosePacket;
-import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.player.ServerboundSetCarriedItemPacket;
+
+import java.util.EnumMap;
+import java.util.Map;
 
 @Data
 @RequiredArgsConstructor
 public class InventoryManager {
-  private final PlayerInventoryContainer playerInventory = new PlayerInventoryContainer(this);
-  private final Int2ObjectMap<Container> containerData =
-    new Int2ObjectOpenHashMap<>(Map.of(0, playerInventory));
+  private final Int2ObjectMap<Container> containerData = new Int2ObjectOpenHashMap<>();
   private final Map<EquipmentSlot, SFItemStack> lastInEquipment = new EnumMap<>(EquipmentSlot.class);
-  private final ReentrantLock inventoryControlLock = new ReentrantLock();
-  @ToString.Exclude
-  private final SessionDataManager dataManager;
   @ToString.Exclude
   private final BotConnection connection;
-  private Container openContainer;
-  private int heldItemSlot = 0;
-  private int lastStateId = -1;
+  private Container currentContainer;
+  private int lastStateId = 0;
   private SFItemStack cursorItem;
-
-  /**
-   * The inventory has a control lock to prevent multiple threads from moving items at the same
-   * time.
-   */
-  public void lockInventoryControl() {
-    inventoryControlLock.lock();
-  }
-
-  @SuppressWarnings("BooleanMethodIsAlwaysInverted")
-  public boolean tryInventoryControl() {
-    return inventoryControlLock.tryLock();
-  }
-
-  public void unlockInventoryControl() {
-    inventoryControlLock.unlock();
-  }
 
   public Container getContainer(int containerId) {
     return containerData.get(containerId);
@@ -78,40 +53,48 @@ public class InventoryManager {
     containerData.put(containerId, container);
   }
 
-  public void sendHeldItemChange() {
-    connection.sendPacket(new ServerboundSetCarriedItemPacket(heldItemSlot));
+  public void closeInventory() {
+    if (currentContainer == null) {
+      return;
+    }
+
+    connection.sendPacket(new ServerboundContainerClosePacket(currentContainer.id()));
+    currentContainer = null;
   }
 
-  public void closeInventory() {
-    if (openContainer != null) {
-      connection.sendPacket(new ServerboundContainerClosePacket(openContainer.id()));
-      openContainer = null;
-    } else {
-      connection.sendPacket(new ServerboundContainerClosePacket(0));
-    }
+  public boolean lookingAtForeignContainer() {
+    return currentContainer != null && currentContainer != playerInventory();
   }
 
   public void openPlayerInventory() {
-    openContainer = playerInventory();
+    if (currentContainer == playerInventory()) {
+      return;
+    }
+
+    closeInventory();
+    currentContainer = playerInventory();
+  }
+
+  public PlayerInventoryContainer playerInventory() {
+    return connection.dataManager().localPlayer().inventory();
+  }
+
+  public void changeHeldItem(int slot) {
+    playerInventory().selected = slot;
   }
 
   public void leftClickSlot(ContainerSlot slot) {
     leftClickSlot(slot.slot());
   }
 
-  public void leftClickSlot(int slot) {
-    if (!inventoryControlLock.isHeldByCurrentThread()) {
-      throw new IllegalStateException(
-        "You need to lock the inventoryControlLock before calling this method!");
-    }
-
-    if (openContainer == null) {
-      openPlayerInventory();
+  private void leftClickSlot(int slot) {
+    if (currentContainer == null) {
+      throw new IllegalStateException("No container is open");
     }
 
     SFItemStack slotItem;
     {
-      var containerSlot = openContainer.getSlot(slot);
+      var containerSlot = currentContainer.getSlot(slot);
       if (containerSlot.item() == null) {
         // The target slot is empty, and we don't have an item in our cursor
         if (cursorItem == null) {
@@ -133,13 +116,13 @@ public class InventoryManager {
       }
     }
 
-    openContainer.setSlot(slot, slotItem);
+    currentContainer.setSlot(slot, slotItem);
     Int2ObjectMap<ItemStack> changes = new Int2ObjectArrayMap<>(1);
     changes.put(slot, slotItem);
 
     connection.sendPacket(
       new ServerboundContainerClickPacket(
-        openContainer.id(),
+        currentContainer.id(),
         lastStateId,
         slot,
         ContainerActionType.CLICK_ITEM,
@@ -158,29 +141,29 @@ public class InventoryManager {
   }
 
   private void applyIfMatches(EquipmentSlot equipmentSlot) {
-    var item = playerInventory.getEquipmentSlot(equipmentSlot).item();
+    var item = playerInventory().getEquipmentSlotItem(equipmentSlot);
     var previousItem = lastInEquipment.get(equipmentSlot);
     boolean hasChanged;
     if (previousItem != null) {
-      if (item == null || previousItem.type() != item.type()) {
+      if (item.isEmpty() || previousItem.type() != item.get().type()) {
         // Item before, but we don't have one now, or it's different
         hasChanged = true;
 
         // Remove the old item's modifiers
-        dataManager.clientEntity().attributeState().removeItemModifiers(previousItem, equipmentSlot);
+        connection.dataManager().localPlayer().attributeState().removeItemModifiers(previousItem, equipmentSlot);
       } else {
         // Item before, and we have the same one now
         hasChanged = false;
       }
     } else {
       // No item before, but we have one now
-      hasChanged = item != null;
+      hasChanged = item.isPresent();
     }
 
-    if (hasChanged && item != null) {
-      dataManager.clientEntity().attributeState().putItemModifiers(item, equipmentSlot);
+    if (hasChanged && item.isPresent()) {
+      connection.dataManager().localPlayer().attributeState().putItemModifiers(item.get(), equipmentSlot);
     }
 
-    lastInEquipment.put(equipmentSlot, item);
+    lastInEquipment.put(equipmentSlot, item.orElse(null));
   }
 }

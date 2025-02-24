@@ -17,71 +17,108 @@
  */
 package com.soulfiremc.server.plugins;
 
-import com.soulfiremc.server.ServerCommandManager;
-import com.soulfiremc.server.api.PluginHelper;
-import com.soulfiremc.server.api.SoulFireAPI;
+import com.soulfiremc.server.api.InternalPlugin;
+import com.soulfiremc.server.api.PluginInfo;
 import com.soulfiremc.server.api.event.bot.ChatMessageReceiveEvent;
-import com.soulfiremc.server.api.event.lifecycle.SettingsRegistryInitEvent;
-import com.soulfiremc.server.brigadier.ServerConsoleCommandSource;
+import com.soulfiremc.server.api.event.lifecycle.InstanceSettingsRegistryInitEvent;
+import com.soulfiremc.server.command.CommandSource;
+import com.soulfiremc.server.command.CommandSourceStack;
+import com.soulfiremc.server.command.ServerCommandManager;
+import com.soulfiremc.server.protocol.BotConnection;
 import com.soulfiremc.server.settings.lib.SettingsObject;
 import com.soulfiremc.server.settings.property.BooleanProperty;
-import com.soulfiremc.server.settings.property.Property;
+import com.soulfiremc.server.settings.property.ImmutableBooleanProperty;
+import com.soulfiremc.server.settings.property.ImmutableStringProperty;
 import com.soulfiremc.server.settings.property.StringProperty;
+import com.soulfiremc.server.user.PermissionContext;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.util.TriState;
 import net.lenni0451.lambdaevents.EventHandler;
+import org.pf4j.Extension;
+import org.slf4j.event.Level;
 
-public class ChatControl implements InternalPlugin {
+import java.util.Set;
+
+@Extension
+public class ChatControl extends InternalPlugin {
+  public ChatControl() {
+    super(new PluginInfo(
+      "chat-control",
+      "1.0.0",
+      "Control the bot with chat messages",
+      "AlexProgrammerDE",
+      "GPL-3.0",
+      "https://soulfiremc.com"
+    ));
+  }
+
+  @EventHandler
   public static void onChat(ChatMessageReceiveEvent event) {
     var connection = event.connection();
-    var settingsHolder = connection.settingsHolder();
-    if (!settingsHolder.get(ChatControlSettings.ENABLED)) {
+    var settingsSource = connection.settingsSource();
+    if (!settingsSource.get(ChatControlSettings.ENABLED)) {
       return;
     }
 
     var plainMessage = event.parseToPlainText();
-    var prefix = settingsHolder.get(ChatControlSettings.COMMAND_PREFIX);
-
-    if (plainMessage.startsWith(prefix)) {
-      var command = plainMessage.substring(prefix.length());
-      connection.logger().info("[ChatControl] Executing command: \"{}\"", command);
-      var code = connection.attackManager()
-        .soulFireServer()
-        .injector()
-        .getSingleton(ServerCommandManager.class)
-        .execute(command, ServerConsoleCommandSource.INSTANCE);
-
-      connection.botControl().sendMessage("Command \"%s\" executed! (Code: %d)".formatted(command, code));
+    var prefix = settingsSource.get(ChatControlSettings.COMMAND_PREFIX);
+    var prefixIndex = plainMessage.indexOf(prefix);
+    if (prefixIndex == -1) {
+      return;
     }
+
+    plainMessage = plainMessage.substring(prefixIndex);
+    var command = plainMessage.substring(prefix.length());
+    connection.logger().info("[ChatControl] Executing command: \"{}\"", command);
+
+    var soulFire = connection.instanceManager().soulFireServer();
+    soulFire.injector()
+      .getSingleton(ServerCommandManager.class)
+      .execute(command, CommandSourceStack.ofInstance(soulFire, new ChatControlCommandSource(connection), Set.of(connection.instanceManager().id())));
   }
 
   @EventHandler
-  public static void onSettingsRegistryInit(SettingsRegistryInitEvent event) {
-    event.settingsRegistry().addClass(ChatControlSettings.class, "Chat Control");
-  }
-
-  @Override
-  public void onLoad() {
-    SoulFireAPI.registerListeners(ChatControl.class);
-    PluginHelper.registerBotEventConsumer(ChatMessageReceiveEvent.class, ChatControl::onChat);
+  public void onSettingsRegistryInit(InstanceSettingsRegistryInitEvent event) {
+    event.settingsRegistry().addPluginPage(ChatControlSettings.class, "Chat Control", this, "joystick", ChatControlSettings.ENABLED);
   }
 
   @NoArgsConstructor(access = AccessLevel.NONE)
   private static class ChatControlSettings implements SettingsObject {
-    private static final Property.Builder BUILDER = Property.builder("chat-control");
+    private static final String NAMESPACE = "chat-control";
     public static final BooleanProperty ENABLED =
-      BUILDER.ofBoolean(
-        "enabled",
-        "Enable Chat Control",
-        new String[] {"--chat-control"},
-        "Enable controlling the bot with chat messages",
-        false);
+      ImmutableBooleanProperty.builder()
+        .namespace(NAMESPACE)
+        .key("enabled")
+        .uiName("Enable Chat Control")
+        .description("Enable controlling the bot with chat messages")
+        .defaultValue(false)
+        .build();
     public static final StringProperty COMMAND_PREFIX =
-      BUILDER.ofString(
-        "command-prefix",
-        "Command Prefix",
-        new String[] {"--command-prefix"},
-        "Word to put before a command to make the bot execute it",
-        "$");
+      ImmutableStringProperty.builder()
+        .namespace(NAMESPACE)
+        .key("command-prefix")
+        .uiName("Command Prefix")
+        .description("Word to put before a command to make the bot execute it")
+        .defaultValue("$")
+        .build();
+  }
+
+  public record ChatControlCommandSource(BotConnection connection) implements CommandSource {
+    @Override
+    public TriState getPermission(PermissionContext permission) {
+      return TriState.TRUE;
+    }
+
+    @Override
+    public String identifier() {
+      return "chat-control";
+    }
+
+    @Override
+    public void sendMessage(Level level, Component message) {
+      connection.logger().atLevel(level).log("[ChatControl] {}", message);
+    }
   }
 }

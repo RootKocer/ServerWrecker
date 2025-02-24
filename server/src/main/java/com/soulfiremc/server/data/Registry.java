@@ -17,26 +17,21 @@
  */
 package com.soulfiremc.server.data;
 
-import com.mojang.serialization.Codec;
-import com.soulfiremc.server.protocol.codecs.ExtraCodecs;
 import it.unimi.dsi.fastutil.ints.Int2ReferenceMap;
 import it.unimi.dsi.fastutil.ints.Int2ReferenceOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ReferenceMap;
 import it.unimi.dsi.fastutil.objects.Object2ReferenceOpenHashMap;
-import java.util.Collection;
 import lombok.Getter;
 import net.kyori.adventure.key.Key;
 import org.cloudburstmc.nbt.NbtMap;
+
+import java.util.Collection;
 
 public class Registry<T extends RegistryValue<T>> {
   @Getter
   private final ResourceKey<? extends Registry<T>> registryKey;
   private final Object2ReferenceMap<Key, T> FROM_KEY = new Object2ReferenceOpenHashMap<>();
-  @Getter
-  private final Codec<T> keyCodec = ExtraCodecs.KYORI_KEY_CODEC.xmap(this::getByKey, RegistryValue::key);
   private final Int2ReferenceMap<T> FROM_ID = new Int2ReferenceOpenHashMap<>();
-  @Getter
-  private final Codec<T> idCodec = Codec.INT.xmap(this::getById, RegistryValue::id);
 
   @SuppressWarnings("unchecked")
   public Registry(ResourceKey<?> registryKey) {
@@ -67,14 +62,16 @@ public class Registry<T extends RegistryValue<T>> {
   }
 
   public RegistryDataWriter writer(FromRegistryDataFactory<T> factory) {
-    return (key, id, data) -> register(factory.create(key, id, data));
+    return (key, id, data) -> register(factory.create(key, id, this, data));
   }
 
   public interface RegistryDataWriter {
+    RegistryDataWriter NO_OP = (key, id, data) -> {};
+
     void register(Key key, int id, NbtMap data);
   }
 
   public interface FromRegistryDataFactory<T extends RegistryValue<T>> {
-    T create(Key key, int id, NbtMap data);
+    T create(Key key, int id, Registry<T> registry, NbtMap data);
   }
 }

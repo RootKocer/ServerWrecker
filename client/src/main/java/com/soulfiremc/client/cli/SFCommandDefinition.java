@@ -17,18 +17,13 @@
  */
 package com.soulfiremc.client.cli;
 
-import com.soulfiremc.brigadier.ClientConsoleCommandSource;
-import com.soulfiremc.brigadier.GenericTerminalConsole;
 import com.soulfiremc.builddata.BuildData;
-import com.soulfiremc.client.settings.ProxyParser;
-import com.soulfiremc.settings.account.AuthType;
-import com.soulfiremc.settings.proxy.ProxyType;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.Arrays;
-import java.util.concurrent.Callable;
-import java.util.stream.Collectors;
+import com.soulfiremc.console.GenericTerminalConsole;
+import com.soulfiremc.grpc.generated.InstanceUpdateConfigRequest;
+import com.soulfiremc.server.account.AuthType;
+import com.soulfiremc.server.proxy.ProxyType;
+import com.soulfiremc.server.util.SFPathConstants;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -36,7 +31,13 @@ import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
+import java.nio.file.Path;
+import java.util.Arrays;
+import java.util.concurrent.Callable;
+import java.util.stream.Collectors;
+
 @Slf4j
+@Getter
 @RequiredArgsConstructor
 @Command(
   name = "soulfire",
@@ -44,7 +45,8 @@ import picocli.CommandLine.Option;
   version = "SoulFire v" + BuildData.VERSION,
   showDefaultValues = true,
   description = BuildData.DESCRIPTION,
-  sortOptions = false)
+  sortOptions = false,
+  showAtFileInUsageHelp = true)
 public class SFCommandDefinition implements Callable<Integer> {
   private final CLIManager cliManager;
   @Setter
@@ -76,16 +78,12 @@ public class SFCommandDefinition implements Callable<Integer> {
   private ProxyType proxyType;
 
   @Option(
-    names = {"--profile-file"},
-    description = "File to load a profile from")
-  private Path profileFile;
-
-  @Option(
     names = {"--generate-flags"},
     description = "Create a list of flags",
     hidden = true)
   private boolean generateFlags;
 
+  @SuppressWarnings("ResultOfMethodCallIgnored")
   @Override
   public Integer call() {
     if (generateFlags) {
@@ -101,13 +99,24 @@ public class SFCommandDefinition implements Callable<Integer> {
             var name =
               Arrays.stream(option.names())
                 .map("`%s`"::formatted)
-                .collect(Collectors.joining(", "));
+                .collect(Collectors.joining(", "))
+                .replace("|", "\\|");
             var defaultValue =
               option.defaultValueString() == null
                 ? ""
-                : "`%s`".formatted(option.defaultValueString());
+                : "`%s`"
+                .formatted(option.defaultValueString())
+                .replace("|", "\\|")
+                .replace("\n", " ");
+            if (defaultValue.length() > 50) {
+              defaultValue = defaultValue.substring(0, 50) + "...`";
+            }
+
             var description =
-              option.description() == null ? "" : String.join(", ", option.description());
+              option.description() == null
+                ? ""
+                : String.join(", ", option.description())
+                .replace("|", "\\|");
             System.out.printf("| %s | %s | %s |%n", name, defaultValue, description);
           });
       cliManager.shutdown();
@@ -117,51 +126,27 @@ public class SFCommandDefinition implements Callable<Integer> {
     // Delayed to here, so help and version do not get cut off
     GenericTerminalConsole.setupStreams();
 
-    if (accountFile != null && authType != null) {
-      try {
-        cliManager
-          .clientSettingsManager()
-          .accountRegistry()
-          .loadFromString(Files.readString(accountFile), authType, null);
-      } catch (IOException e) {
-        log.error("Failed to load accounts!", e);
-        return 1;
-      }
-    }
+    cliManager.clientSettingsManager().commandDefinition(this);
 
-    if (proxyFile != null) {
-      try {
-        cliManager
-          .clientSettingsManager()
-          .proxyRegistry()
-          .loadFromString(
-            Files.readString(proxyFile),
-            proxyType == null ? ProxyParser.uriParser() : ProxyParser.typeParser(proxyType));
-      } catch (IOException e) {
-        log.error("Failed to load proxies!", e);
-        return 1;
-      }
-    }
-
-    if (profileFile != null) {
-      try {
-        cliManager.clientSettingsManager().loadProfile(profileFile);
-      } catch (IOException e) {
-        log.error("Failed to load profile!", e);
-        return 1;
-      }
-    }
+    cliManager.rpcClient().instanceStubBlocking().updateInstanceConfig(InstanceUpdateConfigRequest.newBuilder()
+      .setId(cliManager.cliInstanceId().toString())
+      .setConfig(cliManager.clientSettingsManager().exportSettingsProto(cliManager.cliInstanceId()))
+      .build());
 
     if (start) {
-      cliManager.clientCommandManager().execute("start-attack", new ClientConsoleCommandSource());
+      cliManager.clientCommandManager().execute("start-attack");
     } else {
       log.info(
         "SoulFire is ready to go! Type 'start-attack' to start the attack! (Use --start to start automatically)");
     }
 
-    new GenericTerminalConsole<>(cliManager.shutdownManager(), ClientConsoleCommandSource.INSTANCE,
-      cliManager.clientCommandManager(), cliManager.commandHistoryManager())
-      .start();
+    var commandManager = cliManager.clientCommandManager();
+    new GenericTerminalConsole(
+      cliManager.shutdownManager(),
+      commandManager::execute,
+      commandManager::complete,
+      SFPathConstants.CLIENT_DATA_DIRECTORY
+    ).start();
 
     cliManager.shutdownManager().awaitShutdown();
 

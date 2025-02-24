@@ -20,18 +20,19 @@ package com.soulfiremc.generator.generators;
 import com.google.gson.JsonObject;
 import com.google.gson.internal.Streams;
 import com.google.gson.stream.JsonWriter;
-import com.soulfiremc.generator.Main;
 import com.soulfiremc.generator.util.GsonInstance;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.OutputStreamWriter;
-import java.util.Objects;
-import java.util.zip.GZIPOutputStream;
+import com.soulfiremc.generator.util.MCHelper;
 import lombok.extern.slf4j.Slf4j;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
+
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.util.Objects;
+import java.util.zip.GZIPOutputStream;
 
 @Slf4j
 public class WorldExporterGenerator implements IDataGenerator {
@@ -52,9 +53,9 @@ public class WorldExporterGenerator implements IDataGenerator {
     try (var gzipOutputStream = new GZIPOutputStream(byteOutputStream);
          var outputStreamWriter = new OutputStreamWriter(gzipOutputStream);
          var jsonWriter = new JsonWriter(outputStreamWriter)) {
-      var level = Objects.requireNonNull(Main.SERVER.getLevel(Level.OVERWORLD));
+      var level = Objects.requireNonNull(MCHelper.getServer().getLevel(Level.OVERWORLD));
       var jsonObject = new JsonObject();
-      var minBuildHeight = level.getMinBuildHeight();
+      var minBuildHeight = level.getMinY();
       var definitionArray = new String[BuiltInRegistries.BLOCK.size()];
       for (var blockState : BuiltInRegistries.BLOCK) {
         definitionArray[BuiltInRegistries.BLOCK.getId(blockState)] =

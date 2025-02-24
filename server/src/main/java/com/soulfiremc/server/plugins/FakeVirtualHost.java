@@ -17,74 +17,81 @@
  */
 package com.soulfiremc.server.plugins;
 
-import com.soulfiremc.server.api.PluginHelper;
-import com.soulfiremc.server.api.SoulFireAPI;
+import com.soulfiremc.server.api.InternalPlugin;
+import com.soulfiremc.server.api.PluginInfo;
 import com.soulfiremc.server.api.event.bot.SFPacketSendingEvent;
-import com.soulfiremc.server.api.event.lifecycle.SettingsRegistryInitEvent;
+import com.soulfiremc.server.api.event.lifecycle.InstanceSettingsRegistryInitEvent;
 import com.soulfiremc.server.settings.lib.SettingsObject;
-import com.soulfiremc.server.settings.property.BooleanProperty;
-import com.soulfiremc.server.settings.property.IntProperty;
-import com.soulfiremc.server.settings.property.Property;
-import com.soulfiremc.server.settings.property.StringProperty;
+import com.soulfiremc.server.settings.property.*;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import net.lenni0451.lambdaevents.EventHandler;
 import org.geysermc.mcprotocollib.protocol.packet.handshake.serverbound.ClientIntentionPacket;
+import org.pf4j.Extension;
 
-public class FakeVirtualHost implements InternalPlugin {
+@Extension
+public class FakeVirtualHost extends InternalPlugin {
+  public FakeVirtualHost() {
+    super(new PluginInfo(
+      "fake-virtual-host",
+      "1.0.0",
+      "Fakes the virtual host",
+      "AlexProgrammerDE",
+      "GPL-3.0",
+      "https://soulfiremc.com"
+    ));
+  }
+
+  @EventHandler
   public static void onPacket(SFPacketSendingEvent event) {
     if (event.packet() instanceof ClientIntentionPacket intentionPacket) {
-      var settingsHolder = event.connection().settingsHolder();
+      var settingsSource = event.connection().settingsSource();
 
-      if (!settingsHolder.get(FakeVirtualHostSettings.ENABLED)) {
+      if (!settingsSource.get(FakeVirtualHostSettings.ENABLED)) {
         return;
       }
 
       event.packet(
         intentionPacket
-          .withHostname(settingsHolder.get(FakeVirtualHostSettings.HOSTNAME))
-          .withPort(settingsHolder.get(FakeVirtualHostSettings.PORT)));
+          .withHostname(settingsSource.get(FakeVirtualHostSettings.HOSTNAME))
+          .withPort(settingsSource.get(FakeVirtualHostSettings.PORT)));
     }
   }
 
   @EventHandler
-  public static void onSettingsRegistryInit(SettingsRegistryInitEvent event) {
-    event.settingsRegistry().addClass(FakeVirtualHostSettings.class, "Fake Virtual Host");
-  }
-
-  @Override
-  public void onLoad() {
-    SoulFireAPI.registerListeners(FakeVirtualHost.class);
-    PluginHelper.registerBotEventConsumer(SFPacketSendingEvent.class, FakeVirtualHost::onPacket);
+  public void onSettingsRegistryInit(InstanceSettingsRegistryInitEvent event) {
+    event.settingsRegistry().addPluginPage(FakeVirtualHostSettings.class, "Fake Virtual Host", this, "globe", FakeVirtualHostSettings.ENABLED);
   }
 
   @NoArgsConstructor(access = AccessLevel.PRIVATE)
   private static class FakeVirtualHostSettings implements SettingsObject {
-    private static final Property.Builder BUILDER = Property.builder("fake-virtual-host");
+    private static final String NAMESPACE = "fake-virtual-host";
     public static final BooleanProperty ENABLED =
-      BUILDER.ofBoolean(
-        "enabled",
-        "Fake virtual host",
-        new String[] {"--fake-virtual-host"},
-        "Whether to fake the virtual host or not",
-        false);
+      ImmutableBooleanProperty.builder()
+        .namespace(NAMESPACE)
+        .key("enabled")
+        .uiName("Fake virtual host")
+        .description("Whether to fake the virtual host or not")
+        .defaultValue(false)
+        .build();
     public static final StringProperty HOSTNAME =
-      BUILDER.ofString(
-        "hostname",
-        "Hostname",
-        new String[] {"--fake-virtual-host-hostname"},
-        "The hostname to fake",
-        "localhost");
+      ImmutableStringProperty.builder()
+        .namespace(NAMESPACE)
+        .key("hostname")
+        .uiName("Hostname")
+        .description("The hostname to fake")
+        .defaultValue("localhost")
+        .build();
     public static final IntProperty PORT =
-      BUILDER.ofInt(
-        "port",
-        "Port",
-        new String[] {"--fake-virtual-host-port"},
-        "The port to fake",
-        25565,
-        1,
-        65535,
-        1,
-        "#");
+      ImmutableIntProperty.builder()
+        .namespace(NAMESPACE)
+        .key("port")
+        .uiName("Port")
+        .description("The port to fake")
+        .defaultValue(25565)
+        .minValue(1)
+        .maxValue(65535)
+        .thousandSeparator(false)
+        .build();
   }
 }

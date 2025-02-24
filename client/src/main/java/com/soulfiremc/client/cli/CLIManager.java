@@ -20,38 +20,38 @@ package com.soulfiremc.client.cli;
 import ch.jalu.injector.Injector;
 import ch.jalu.injector.InjectorBuilder;
 import com.google.common.util.concurrent.AtomicDouble;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import com.soulfiremc.client.ClientCommandManager;
 import com.soulfiremc.client.grpc.RPCClient;
 import com.soulfiremc.client.settings.ClientSettingsManager;
-import com.soulfiremc.grpc.generated.ClientDataRequest;
-import com.soulfiremc.grpc.generated.ComboOption;
-import com.soulfiremc.grpc.generated.DoubleSetting;
-import com.soulfiremc.grpc.generated.IntSetting;
-import com.soulfiremc.settings.PropertyKey;
-import com.soulfiremc.util.CommandHistoryManager;
-import com.soulfiremc.util.SFPathConstants;
-import com.soulfiremc.util.ShutdownManager;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
+import com.soulfiremc.client.settings.PropertyKey;
+import com.soulfiremc.grpc.generated.*;
+import com.soulfiremc.server.util.structs.ShutdownManager;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.pf4j.PluginManager;
 import picocli.CommandLine;
+
+import java.util.UUID;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 @Slf4j
 @Getter
 public class CLIManager {
   private final RPCClient rpcClient;
   private final ClientCommandManager clientCommandManager;
-  private final CommandHistoryManager commandHistoryManager = new CommandHistoryManager(SFPathConstants.CLIENT_DATA_DIRECTORY);
   private final Injector injector =
     new InjectorBuilder().addDefaultHandlers("com.soulfiremc").create();
   private final ExecutorService threadPool = Executors.newCachedThreadPool();
   private final ShutdownManager shutdownManager;
   private final ClientSettingsManager clientSettingsManager;
+  private UUID cliInstanceId;
 
   public CLIManager(RPCClient rpcClient, PluginManager pluginManager) {
     injector.register(CLIManager.class, this);
@@ -70,6 +70,20 @@ public class CLIManager {
   }
 
   public void initCLI(String[] args) {
+    var cliInstance = rpcClient.instanceStubBlocking()
+      .listInstances(InstanceListRequest.newBuilder().build())
+      .getInstancesList()
+      .stream()
+      .filter(instance -> instance.getFriendlyName().equals("cli-attack"))
+      .map(InstanceListResponse.Instance::getId)
+      .map(UUID::fromString)
+      .findFirst();
+
+    cliInstanceId = cliInstance.orElseGet(() -> UUID.fromString(rpcClient.instanceStubBlocking()
+      .createInstance(
+        InstanceCreateRequest.newBuilder().setFriendlyName("cli-attack").build())
+      .getId()));
+
     var soulFireCommand = new SFCommandDefinition(this);
     var commandLine = new CommandLine(soulFireCommand);
     soulFireCommand.commandLine(commandLine);
@@ -93,149 +107,211 @@ public class CLIManager {
       rpcClient
         .configStubBlocking()
         .getClientData(ClientDataRequest.getDefaultInstance())
-        .getPluginSettingsList()) {
+        .getInstanceSettingsList()) {
       for (var entry : page.getEntriesList()) {
+        var propertyKey = new PropertyKey(page.getNamespace(), entry.getKey());
+
+        var baseArg = "--%s-%s".formatted(page.getNamespace(), entry.getKey());
         switch (entry.getValueCase()) {
-          case SINGLE -> {
-            var singleEntry = entry.getSingle();
-            var description = escapeFormatSpecifiers(singleEntry.getDescription());
+          case STRING -> {
+            var stringEntry = entry.getString();
+            var description = escapeFormatSpecifiers(stringEntry.getDescription());
 
-            var propertyKey = new PropertyKey(page.getNamespace(), singleEntry.getKey());
+            var reference = new AtomicReference<String>();
+            var optionSpec =
+              CommandLine.Model.OptionSpec.builder(new String[]{baseArg})
+                .description(description)
+                .type(String.class)
+                .initialValue(stringEntry.getDef())
+                .hasInitialValue(true)
+                .setter(
+                  new CommandLine.Model.ISetter() {
+                    @Override
+                    public <T> T set(T value) {
+                      return (T) reference.getAndSet((String) value);
+                    }
+                  })
+                .build();
 
-            var settingType = singleEntry.getType();
-            targetCommandSpec.addOption(
-              switch (settingType.getValueCase()) {
-                case STRING -> {
-                  var stringEntry = settingType.getString();
-                  var reference = new AtomicReference<String>();
-                  var optionSpec =
-                    CommandLine.Model.OptionSpec.builder(
-                        singleEntry.getCliFlagsList().toArray(new String[0]))
-                      .description(description)
-                      .type(String.class)
-                      .initialValue(stringEntry.getDef())
-                      .hasInitialValue(true)
-                      .setter(
-                        new CommandLine.Model.ISetter() {
-                          @Override
-                          public <T> T set(T value) {
-                            return (T) reference.getAndSet((String) value);
-                          }
-                        })
-                      .build();
+            clientSettingsManager.registerListener(
+              propertyKey, s -> reference.set(s.getAsString()));
+            clientSettingsManager.registerProvider(
+              propertyKey, () -> new JsonPrimitive(reference.get()));
 
-                  clientSettingsManager.registerListener(
-                    propertyKey, s -> reference.set(s.getAsString()));
-                  clientSettingsManager.registerProvider(
-                    propertyKey, () -> new JsonPrimitive(reference.get()));
+            targetCommandSpec.addOption(optionSpec);
+          }
+          case INT -> {
+            var intEntry = entry.getInt();
+            var description = escapeFormatSpecifiers(intEntry.getDescription());
 
-                  yield optionSpec;
+            targetCommandSpec.addOption(addIntSetting(
+              propertyKey,
+              clientSettingsManager,
+              description,
+              new String[]{baseArg},
+              intEntry));
+          }
+          case DOUBLE -> {
+            var doubleEntry = entry.getDouble();
+            var description = escapeFormatSpecifiers(doubleEntry.getDescription());
+
+            targetCommandSpec.addOption(addDoubleSetting(
+              propertyKey,
+              clientSettingsManager,
+              description,
+              new String[]{baseArg},
+              doubleEntry));
+          }
+          case BOOL -> {
+            var boolEntry = entry.getBool();
+            var description = escapeFormatSpecifiers(boolEntry.getDescription());
+
+            var reference = new AtomicReference<Boolean>();
+            var optionSpec =
+              CommandLine.Model.OptionSpec.builder(new String[]{baseArg})
+                .description(description)
+                .type(boolean.class)
+                .initialValue(boolEntry.getDef())
+                .hasInitialValue(true)
+                .setter(
+                  new CommandLine.Model.ISetter() {
+                    @Override
+                    public <T> T set(T value) {
+                      return (T) reference.getAndSet((boolean) value);
+                    }
+                  })
+                .build();
+
+            clientSettingsManager.registerListener(
+              propertyKey, s -> reference.set(s.getAsBoolean()));
+            clientSettingsManager.registerProvider(
+              propertyKey, () -> new JsonPrimitive(reference.get()));
+
+            targetCommandSpec.addOption(optionSpec);
+          }
+          case COMBO -> {
+            var comboEntry = entry.getCombo();
+            var description = escapeFormatSpecifiers(comboEntry.getDescription());
+
+            var reference = new AtomicReference<String>();
+            var optionSpec =
+              CommandLine.Model.OptionSpec.builder(new String[]{baseArg})
+                .description(description)
+                .type(String.class)
+                .initialValue(comboEntry.getDef())
+                .hasInitialValue(true)
+                .completionCandidates(
+                  comboEntry.getOptionsList().stream().map(ComboOption::getId)
+                    ::iterator)
+                .setter(
+                  new CommandLine.Model.ISetter() {
+                    @Override
+                    public <T> T set(T value) {
+                      return (T) reference.getAndSet((String) value);
+                    }
+                  })
+                .build();
+
+            clientSettingsManager.registerListener(
+              propertyKey, s -> reference.set(s.getAsString()));
+            clientSettingsManager.registerProvider(
+              propertyKey, () -> new JsonPrimitive(reference.get()));
+
+            targetCommandSpec.addOption(optionSpec);
+          }
+          case STRING_LIST -> {
+            var stringListEntry = entry.getStringList();
+            var description = escapeFormatSpecifiers(stringListEntry.getDescription());
+
+            var reference = new AtomicReference<String[]>();
+            var optionSpec =
+              CommandLine.Model.OptionSpec.builder(new String[]{baseArg})
+                .description(description)
+                .type(String[].class)
+                .initialValue(stringListEntry.getDefList().toArray(new String[0]))
+                .hasInitialValue(true)
+                .setter(
+                  new CommandLine.Model.ISetter() {
+                    @Override
+                    public <T> T set(T value) {
+                      return (T) reference.getAndSet((String[]) value);
+                    }
+                  })
+                .build();
+
+            clientSettingsManager.registerListener(
+              propertyKey, s -> reference.set(s.getAsJsonArray()
+                .asList()
+                .stream()
+                .map(JsonElement::getAsString)
+                .toArray(String[]::new)));
+            clientSettingsManager.registerProvider(
+              propertyKey, () -> {
+                var array = new JsonArray();
+                for (var element : reference.get()) {
+                  array.add(new JsonPrimitive(element));
                 }
-                case INT -> {
-                  var intEntry = settingType.getInt();
-                  yield addIntSetting(
-                    propertyKey,
-                    clientSettingsManager,
-                    description,
-                    singleEntry.getCliFlagsList().toArray(new String[0]),
-                    intEntry);
-                }
-                case DOUBLE -> {
-                  var doubleEntry = settingType.getDouble();
-                  yield addDoubleSetting(
-                    propertyKey,
-                    clientSettingsManager,
-                    description,
-                    singleEntry.getCliFlagsList().toArray(new String[0]),
-                    doubleEntry);
-                }
-                case BOOL -> {
-                  var boolEntry = settingType.getBool();
-                  var reference = new AtomicReference<Boolean>();
-                  var optionSpec =
-                    CommandLine.Model.OptionSpec.builder(
-                        singleEntry.getCliFlagsList().toArray(new String[0]))
-                      .description(description)
-                      .type(boolean.class)
-                      .initialValue(boolEntry.getDef())
-                      .hasInitialValue(true)
-                      .setter(
-                        new CommandLine.Model.ISetter() {
-                          @Override
-                          public <T> T set(T value) {
-                            return (T) reference.getAndSet((boolean) value);
-                          }
-                        })
-                      .build();
 
-                  clientSettingsManager.registerListener(
-                    propertyKey, s -> reference.set(s.getAsBoolean()));
-                  clientSettingsManager.registerProvider(
-                    propertyKey, () -> new JsonPrimitive(reference.get()));
-
-                  yield optionSpec;
-                }
-                case COMBO -> {
-                  var comboEntry = settingType.getCombo();
-                  var reference = new AtomicReference<String>();
-
-                  var optionSpec =
-                    CommandLine.Model.OptionSpec.builder(
-                        singleEntry.getCliFlagsList().toArray(new String[0]))
-                      .description(description)
-                      .type(String.class)
-                      .initialValue(
-                        comboEntry.getOptionsList().get(comboEntry.getDef()).getId())
-                      .hasInitialValue(true)
-                      .completionCandidates(
-                        comboEntry.getOptionsList().stream().map(ComboOption::getId)
-                          ::iterator)
-                      .setter(
-                        new CommandLine.Model.ISetter() {
-                          @Override
-                          public <T> T set(T value) {
-                            return (T) reference.getAndSet((String) value);
-                          }
-                        })
-                      .build();
-
-                  clientSettingsManager.registerListener(
-                    propertyKey, s -> reference.set(s.getAsString()));
-                  clientSettingsManager.registerProvider(
-                    propertyKey, () -> new JsonPrimitive(reference.get()));
-
-                  yield optionSpec;
-                }
-                case VALUE_NOT_SET -> throw new IllegalStateException(
-                  "Unexpected value: " + settingType.getValueCase());
+                return array;
               });
-          }
-          case MINMAXPAIR -> {
-            var minMaxEntry = entry.getMinMaxPair();
 
-            var min = minMaxEntry.getMin();
-            var minDescription = escapeFormatSpecifiers(min.getDescription());
-            var minPropertyKey = new PropertyKey(page.getNamespace(), min.getKey());
-            targetCommandSpec.addOption(
-              addIntSetting(
-                minPropertyKey,
-                clientSettingsManager,
-                minDescription,
-                min.getCliFlagsList().toArray(new String[0]),
-                min.getIntSetting()));
-
-            var max = minMaxEntry.getMax();
-            var maxDescription = escapeFormatSpecifiers(max.getDescription());
-            var maxPropertyKey = new PropertyKey(page.getNamespace(), max.getKey());
-            targetCommandSpec.addOption(
-              addIntSetting(
-                maxPropertyKey,
-                clientSettingsManager,
-                maxDescription,
-                max.getCliFlagsList().toArray(new String[0]),
-                max.getIntSetting()));
+            targetCommandSpec.addOption(optionSpec);
           }
-          case VALUE_NOT_SET -> throw new IllegalStateException("Unexpected value: " + entry.getValueCase());
+          case MIN_MAX -> {
+            var minMaxEntry = entry.getMinMax();
+
+            var minEntry = minMaxEntry.getMinEntry();
+            var minRef = new AtomicInteger();
+            var minOptionSpec =
+              CommandLine.Model.OptionSpec.builder(new String[]{baseArg + "-min"})
+                .description(escapeFormatSpecifiers(minEntry.getDescription()))
+                .type(int.class)
+                .initialValue(minEntry.getDef())
+                .hasInitialValue(true)
+                .setter(
+                  new CommandLine.Model.ISetter() {
+                    @Override
+                    @SuppressWarnings("unchecked")
+                    public <T> T set(T value) {
+                      return (T) (Integer) minRef.getAndSet((int) value);
+                    }
+                  })
+                .build();
+
+            var maxEntry = minMaxEntry.getMaxEntry();
+            var maxRef = new AtomicInteger();
+            var maxOptionSpec =
+              CommandLine.Model.OptionSpec.builder(new String[]{baseArg + "-max"})
+                .description(escapeFormatSpecifiers(maxEntry.getDescription()))
+                .type(int.class)
+                .initialValue(maxEntry.getDef())
+                .hasInitialValue(true)
+                .setter(
+                  new CommandLine.Model.ISetter() {
+                    @Override
+                    @SuppressWarnings("unchecked")
+                    public <T> T set(T value) {
+                      return (T) (Integer) maxRef.getAndSet((int) value);
+                    }
+                  })
+                .build();
+
+            clientSettingsManager.registerListener(propertyKey, s -> {
+              minRef.set(s.getAsJsonObject().get("min").getAsInt());
+              maxRef.set(s.getAsJsonObject().get("max").getAsInt());
+            });
+            clientSettingsManager.registerProvider(propertyKey, () -> {
+              var obj = new JsonObject();
+              obj.addProperty("min", minRef.get());
+              obj.addProperty("max", maxRef.get());
+              return obj;
+            });
+
+            targetCommandSpec.addOption(minOptionSpec);
+            targetCommandSpec.addOption(maxOptionSpec);
+          }
+          case VALUE_NOT_SET -> throw new IllegalStateException(
+            "Unexpected value: " + entry.getValueCase());
         }
       }
     }

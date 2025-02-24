@@ -17,64 +17,59 @@
  */
 package com.soulfiremc.server.protocol;
 
-import com.soulfiremc.server.AttackManager;
+import com.soulfiremc.server.InstanceManager;
 import com.soulfiremc.server.SoulFireScheduler;
-import com.soulfiremc.server.api.event.EventExceptionHandler;
-import com.soulfiremc.server.api.event.SoulFireBotEvent;
-import com.soulfiremc.server.api.event.attack.PreBotConnectEvent;
+import com.soulfiremc.server.account.MinecraftAccount;
+import com.soulfiremc.server.account.service.OnlineJavaDataLike;
+import com.soulfiremc.server.api.SoulFireAPI;
 import com.soulfiremc.server.api.event.bot.BotPostTickEvent;
 import com.soulfiremc.server.api.event.bot.BotPreTickEvent;
+import com.soulfiremc.server.api.event.bot.PreBotConnectEvent;
+import com.soulfiremc.server.api.metadata.MetadataHolder;
 import com.soulfiremc.server.protocol.bot.BotControlAPI;
 import com.soulfiremc.server.protocol.bot.SessionDataManager;
-import com.soulfiremc.server.protocol.bot.state.TickHookContext;
+import com.soulfiremc.server.protocol.bot.container.InventoryManager;
+import com.soulfiremc.server.protocol.bot.state.ControlState;
 import com.soulfiremc.server.protocol.netty.ResolveUtil;
 import com.soulfiremc.server.protocol.netty.ViaClientSession;
-import com.soulfiremc.server.settings.lib.SettingsHolder;
-import com.soulfiremc.server.util.TimeUtil;
-import com.soulfiremc.settings.account.MinecraftAccount;
-import com.soulfiremc.settings.account.service.OnlineSimpleJavaData;
-import com.soulfiremc.settings.proxy.SFProxy;
+import com.soulfiremc.server.proxy.SFProxy;
+import com.soulfiremc.server.settings.lib.InstanceSettingsSource;
+import com.soulfiremc.server.util.structs.SFLogAppender;
 import com.viaversion.viaversion.api.protocol.version.ProtocolVersion;
 import io.netty.channel.EventLoopGroup;
 import io.netty.handler.traffic.GlobalTrafficShapingHandler;
+import lombok.Getter;
+import lombok.Setter;
+import net.kyori.adventure.text.Component;
+import org.geysermc.mcprotocollib.network.packet.Packet;
+import org.geysermc.mcprotocollib.protocol.MinecraftProtocol;
+import org.geysermc.mcprotocollib.protocol.data.ProtocolState;
+import org.geysermc.mcprotocollib.protocol.data.game.PlayerListEntry;
+import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.ServerboundClientTickEndPacket;
+import org.slf4j.Logger;
+import org.slf4j.MDC;
+
 import java.util.List;
+import java.util.Optional;
 import java.util.Queue;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
-import lombok.Getter;
-import net.kyori.adventure.text.Component;
-import net.lenni0451.lambdaevents.LambdaManager;
-import net.lenni0451.lambdaevents.generator.ASMGenerator;
-import org.geysermc.mcprotocollib.network.packet.Packet;
-import org.geysermc.mcprotocollib.protocol.MinecraftProtocol;
-import org.geysermc.mcprotocollib.protocol.data.ProtocolState;
-import org.slf4j.Logger;
-import org.slf4j.MDC;
 
 @Getter
 public final class BotConnection {
   public static final ThreadLocal<BotConnection> CURRENT = new ThreadLocal<>();
-  private final UUID connectionId = UUID.randomUUID();
-  private final LambdaManager eventBus = LambdaManager.basic(new ASMGenerator())
-    .setExceptionHandler(EventExceptionHandler.INSTANCE)
-    .setEventFilter(
-      (c, h) -> {
-        if (SoulFireBotEvent.class.isAssignableFrom(c)) {
-          return true;
-        } else {
-          throw new IllegalStateException(
-            "This event handler only accepts bot events");
-        }
-      });
   private final List<Runnable> shutdownHooks = new CopyOnWriteArrayList<>();
   private final Queue<Runnable> preTickHooks = new ConcurrentLinkedQueue<>();
+  private final MetadataHolder metadata = new MetadataHolder();
+  private final ControlState controlState = new ControlState();
+  private final InventoryManager inventoryManager;
   private final SoulFireScheduler scheduler;
   private final BotConnectionFactory factory;
-  private final AttackManager attackManager;
-  private final SettingsHolder settingsHolder;
+  private final InstanceManager instanceManager;
+  private final InstanceSettingsSource settingsSource;
   private final Logger logger;
   private final MinecraftProtocol protocol;
   private final ViaClientSession session;
@@ -87,13 +82,17 @@ public final class BotConnection {
   private final SFSessionService sessionService;
   private final SessionDataManager dataManager;
   private final BotControlAPI botControl;
+  private final SoulFireScheduler.RunnableWrapper runnableWrapper;
   private final Object shutdownLock = new Object();
+  private boolean explicitlyShutdown = false;
   private boolean running = true;
+  @Setter
+  private boolean pause = false;
 
   public BotConnection(
     BotConnectionFactory factory,
-    AttackManager attackManager,
-    SettingsHolder settingsHolder,
+    InstanceManager instanceManager,
+    InstanceSettingsSource settingsSource,
     Logger logger,
     MinecraftProtocol protocol,
     ResolveUtil.ResolvedAddress resolvedAddress,
@@ -103,22 +102,23 @@ public final class BotConnection {
     SFProxy proxyData,
     EventLoopGroup eventLoopGroup) {
     this.factory = factory;
-    this.attackManager = attackManager;
-    this.settingsHolder = settingsHolder;
+    this.instanceManager = instanceManager;
+    this.settingsSource = settingsSource;
     this.logger = logger;
-    this.scheduler = new SoulFireScheduler(logger, runnable -> () -> {
+    this.minecraftAccount = minecraftAccount;
+    this.accountProfileId = minecraftAccount.profileId();
+    this.accountName = minecraftAccount.lastKnownName();
+    this.runnableWrapper = instanceManager.runnableWrapper().with(runnable -> () -> {
       CURRENT.set(this);
-      try {
+      try (var ignored = MDC.putCloseable(SFLogAppender.SF_BOT_ACCOUNT_ID, this.accountProfileId.toString())) {
         runnable.run();
       } finally {
         CURRENT.remove();
       }
     });
+    this.scheduler = new SoulFireScheduler(logger, runnableWrapper);
     this.protocol = protocol;
     this.resolvedAddress = resolvedAddress;
-    this.minecraftAccount = minecraftAccount;
-    this.accountProfileId = minecraftAccount.profileId();
-    this.accountName = minecraftAccount.lastKnownName();
     this.targetState = targetState;
     this.protocolVersion = protocolVersion;
     this.sessionService =
@@ -128,16 +128,17 @@ public final class BotConnection {
     this.session = new ViaClientSession(
       resolvedAddress.resolvedAddress(), logger, protocol, proxyData, eventLoopGroup, this);
     this.dataManager = new SessionDataManager(this);
-    this.botControl = new BotControlAPI(this, dataManager);
+    this.inventoryManager = new InventoryManager(this);
+    this.botControl = new BotControlAPI(this);
 
     // Start the tick loop
-    scheduler.schedule(this::tickLoop);
+    scheduler.scheduleWithFixedDelay(this::tickLoop, 0, 1, TimeUnit.MILLISECONDS);
   }
 
   public CompletableFuture<?> connect() {
-    return CompletableFuture.runAsync(
+    return scheduler.runAsync(
       () -> {
-        attackManager.eventBus().call(new PreBotConnectEvent(this));
+        SoulFireAPI.postEvent(new PreBotConnectEvent(this));
         session.connect(true);
       });
   }
@@ -147,28 +148,19 @@ public final class BotConnection {
   }
 
   private void tickLoop() {
-    MDC.put("connectionId", connectionId.toString());
-    MDC.put("botName", accountName);
-    MDC.put("botUuid", accountProfileId.toString());
-
-    while (this.running) {
-      var tickTimer = dataManager.tickTimer();
-      var ticks = tickTimer.advanceTime(System.currentTimeMillis());
-
-      if (session.isDisconnected()) {
-        wasDisconnected();
-        break;
-      }
-
-      try {
-        tick(ticks);
-      } catch (Throwable t) {
-        logger.error("Exception ticking bot", t);
-      }
+    if (!running) {
+      return;
     }
+
+    if (session.isDisconnected()) {
+      wasDisconnected();
+      return;
+    }
+
+    runTick();
   }
 
-  public void tick(int ticks) {
+  public void runTick() {
     try {
       session.tick(); // Ensure all packets are handled before ticking
 
@@ -176,22 +168,30 @@ public final class BotConnection {
         preTickHooks.poll().run();
       }
 
-      for (var i = 0L; i < Math.min(ticks, 10); i++) {
-        var tickHookState = TickHookContext.INSTANCE.get();
-        tickHookState.clear();
-
-        eventBus.call(new BotPreTickEvent(this));
-        tickHookState.callHooks(TickHookContext.HookType.PRE_TICK);
-
-        dataManager.tick();
-        botControl.tick();
-
-        eventBus.call(new BotPostTickEvent(this));
-        tickHookState.callHooks(TickHookContext.HookType.POST_TICK);
+      var tickTimer = dataManager.tickTimer();
+      var ticks = tickTimer.advanceTime(System.nanoTime() / 1000000L, true);
+      for (var i = 0; i < Math.min(10, ticks); i++) {
+        this.tick();
       }
+
+      tickTimer.updatePauseState(this.pause);
+      tickTimer.updateFrozenState(!dataManager.isLevelRunningNormally());
     } catch (Throwable t) {
       logger.error("Error while ticking bot!", t);
     }
+  }
+
+  public void tick() {
+    SoulFireAPI.postEvent(new BotPreTickEvent(this));
+
+    botControl.tick();
+    dataManager.tick();
+
+    if (protocol.getOutboundState() == ProtocolState.GAME) {
+      sendPacket(ServerboundClientTickEndPacket.INSTANCE);
+    }
+
+    SoulFireAPI.postEvent(new BotPostTickEvent(this));
   }
 
   public GlobalTrafficShapingHandler trafficHandler() {
@@ -206,19 +206,15 @@ public final class BotConnection {
 
       running = false;
 
+      explicitlyShutdown = true;
+
       // Run all shutdown hooks
       shutdownHooks.forEach(Runnable::run);
 
       session.disconnect(Component.translatable("multiplayer.status.quitting"));
 
-      // Give the server one second to handle the disconnect
-      TimeUtil.waitTime(1, TimeUnit.SECONDS);
-
       // Shut down all executors
       scheduler.shutdown();
-
-      // Let threads finish that didn't immediately interrupt
-      TimeUtil.waitTime(100, TimeUnit.MILLISECONDS);
     }
   }
 
@@ -242,11 +238,11 @@ public final class BotConnection {
     throw new UnsupportedOperationException("Not implemented yet!");
   }
 
-  public void joinServerId(String serverId, ViaClientSession session) {
+  public void joinServerId(String serverId) {
     try {
-      var javaData = (OnlineSimpleJavaData) minecraftAccount.accountData();
+      var javaData = (OnlineJavaDataLike) minecraftAccount.accountData();
       sessionService.joinServer(accountProfileId, javaData.authToken(), serverId);
-      session.logger().debug("Successfully sent mojang join request!");
+      logger.debug("Successfully sent mojang join request!");
     } catch (Exception e) {
       session.disconnect(Component.translatable("disconnect.loginFailedInfo", e.getMessage()), e);
     }
@@ -254,5 +250,9 @@ public final class BotConnection {
 
   public void sendPacket(Packet packet) {
     session.send(packet);
+  }
+
+  public Optional<PlayerListEntry> getEntityProfile(UUID uuid) {
+    return Optional.ofNullable(dataManager.playerListState().entries().get(uuid));
   }
 }

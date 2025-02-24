@@ -24,7 +24,7 @@ import com.soulfiremc.server.pathfinding.SFVec3i;
 import com.soulfiremc.server.pathfinding.graph.BlockFace;
 import com.soulfiremc.server.pathfinding.graph.actions.movement.MovementMiningCost;
 import com.soulfiremc.server.protocol.BotConnection;
-import com.soulfiremc.server.util.BlockTypeHelper;
+import com.soulfiremc.server.util.SFBlockHelpers;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -36,7 +36,7 @@ public final class BlockBreakAction implements WorldAction {
   @Getter
   private final SFVec3i blockPosition;
   private final BlockFace blockBreakSideHint;
-  boolean finishedDigging = false;
+  private boolean finishedDigging = false;
   private boolean didLook = false;
   private boolean putInHand = false;
   private int remainingTicks = -1;
@@ -49,32 +49,29 @@ public final class BlockBreakAction implements WorldAction {
   @Override
   public boolean isCompleted(BotConnection connection) {
     var level = connection.dataManager().currentLevel();
+    var blockType = level.getBlockState(blockPosition).blockType();
 
-    return BlockTypeHelper.isEmptyBlock(level.getBlockState(blockPosition).blockType());
+    return SFBlockHelpers.isEmptyBlock(blockType);
   }
 
   @Override
   public SFVec3i targetPosition(BotConnection connection) {
-    return SFVec3i.fromDouble(connection.dataManager().clientEntity().pos());
+    return SFVec3i.fromDouble(connection.dataManager().localPlayer().pos());
   }
 
   @Override
   public void tick(BotConnection connection) {
     var dataManager = connection.dataManager();
-    var clientEntity = dataManager.clientEntity();
-    dataManager.controlState().resetAll();
+    var clientEntity = dataManager.localPlayer();
+    connection.controlState().resetAll();
 
     var level = dataManager.currentLevel();
     if (!didLook) {
       didLook = true;
-      var previousYaw = clientEntity.yaw();
-      var previousPitch = clientEntity.pitch();
       clientEntity.lookAt(
         RotationOrigin.EYES,
         blockBreakSideHint.getMiddleOfFace(blockPosition));
-      if (previousPitch != clientEntity.pitch() || previousYaw != clientEntity.yaw()) {
-        clientEntity.sendRot();
-      }
+      clientEntity.sendPositionChanges();
     }
 
     if (!putInHand) {
@@ -92,20 +89,19 @@ public final class BlockBreakAction implements WorldAction {
     if (remainingTicks == -1) {
       var optionalBlockType = level.getBlockState(blockPosition).blockType();
       if (optionalBlockType == BlockType.VOID_AIR) {
-        log.warn("Block at {} is not in view range!", blockPosition);
+        log.warn("Block at {} is not loaded!", blockPosition);
         return;
       }
 
       remainingTicks = totalTicks =
         Costs.getRequiredMiningTicks(
             dataManager.tagsState(),
-            dataManager.clientEntity(),
-            dataManager.inventoryManager().playerInventory(),
+            dataManager.localPlayer(),
             clientEntity.onGround(),
-            dataManager.inventoryManager().playerInventory().getHeldItem().item(),
+            connection.inventoryManager().playerInventory().getHeldItem().item(),
             optionalBlockType)
           .ticks();
-      dataManager.botActionManager()
+      connection.dataManager().gameModeState()
         .sendStartBreakBlock(blockPosition.toVector3i(), blockBreakSideHint.toDirection());
 
       // We instamine or are in creative mode
@@ -118,11 +114,11 @@ public final class BlockBreakAction implements WorldAction {
         dataManager.currentLevel().setBlock(blockPosition.toVector3i(), BlockState.forDefaultBlockType(BlockType.AIR));
       }
     } else if (--remainingTicks == 0) {
-      dataManager.botActionManager()
+      connection.dataManager().gameModeState()
         .sendEndBreakBlock(blockPosition.toVector3i(), blockBreakSideHint.toDirection());
       finishedDigging = true;
     } else {
-      dataManager.botActionManager().sendBreakBlockAnimation();
+      connection.dataManager().gameModeState().sendBreakBlockAnimation();
     }
   }
 

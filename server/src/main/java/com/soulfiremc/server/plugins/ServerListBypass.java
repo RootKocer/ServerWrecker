@@ -17,23 +17,35 @@
  */
 package com.soulfiremc.server.plugins;
 
-import com.soulfiremc.server.api.PluginHelper;
-import com.soulfiremc.server.api.SoulFireAPI;
-import com.soulfiremc.server.api.event.attack.PreBotConnectEvent;
-import com.soulfiremc.server.api.event.lifecycle.SettingsRegistryInitEvent;
+import com.soulfiremc.server.api.InternalPlugin;
+import com.soulfiremc.server.api.PluginInfo;
+import com.soulfiremc.server.api.event.bot.PreBotConnectEvent;
+import com.soulfiremc.server.api.event.lifecycle.InstanceSettingsRegistryInitEvent;
 import com.soulfiremc.server.settings.lib.SettingsObject;
-import com.soulfiremc.server.settings.property.BooleanProperty;
-import com.soulfiremc.server.settings.property.MinMaxPropertyLink;
-import com.soulfiremc.server.settings.property.Property;
-import com.soulfiremc.server.util.RandomUtil;
+import com.soulfiremc.server.settings.property.*;
 import com.soulfiremc.server.util.TimeUtil;
-import java.util.concurrent.TimeUnit;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import net.lenni0451.lambdaevents.EventHandler;
 import org.geysermc.mcprotocollib.protocol.data.ProtocolState;
+import org.pf4j.Extension;
 
-public class ServerListBypass implements InternalPlugin {
+import java.util.concurrent.TimeUnit;
+
+@Extension
+public class ServerListBypass extends InternalPlugin {
+  public ServerListBypass() {
+    super(new PluginInfo(
+      "server-list-bypass",
+      "1.0.0",
+      "Pings the server list before connecting. (Bypasses anti-bots like EpicGuard)",
+      "AlexProgrammerDE",
+      "GPL-3.0",
+      "https://soulfiremc.com"
+    ));
+  }
+
+  @EventHandler
   public static void onPreConnect(PreBotConnectEvent event) {
     var connection = event.connection();
     if (connection.targetState() == ProtocolState.STATUS) {
@@ -41,60 +53,48 @@ public class ServerListBypass implements InternalPlugin {
     }
 
     var factory = connection.factory();
-    var settingsHolder = connection.settingsHolder();
-    if (!settingsHolder.get(ServerListBypassSettings.ENABLED)) {
+    var settingsSource = connection.settingsSource();
+    if (!settingsSource.get(ServerListBypassSettings.ENABLED)) {
       return;
     }
 
     factory.prepareConnectionInternal(ProtocolState.STATUS).connect().join();
     TimeUtil.waitTime(
-      RandomUtil.getRandomInt(
-        settingsHolder.get(ServerListBypassSettings.DELAY.min()),
-        settingsHolder.get(ServerListBypassSettings.DELAY.max())),
+      settingsSource.getRandom(ServerListBypassSettings.DELAY).getAsLong(),
       TimeUnit.SECONDS);
   }
 
   @EventHandler
-  public static void onSettingsRegistryInit(SettingsRegistryInitEvent event) {
-    event.settingsRegistry().addClass(ServerListBypassSettings.class, "Server List Bypass");
-  }
-
-  @Override
-  public void onLoad() {
-    SoulFireAPI.registerListeners(ServerListBypass.class);
-    PluginHelper.registerAttackEventConsumer(
-      PreBotConnectEvent.class, ServerListBypass::onPreConnect);
+  public void onSettingsRegistryInit(InstanceSettingsRegistryInitEvent event) {
+    event.settingsRegistry().addPluginPage(ServerListBypassSettings.class, "Server List Bypass", this, "network", ServerListBypassSettings.ENABLED);
   }
 
   @NoArgsConstructor(access = AccessLevel.NONE)
   private static class ServerListBypassSettings implements SettingsObject {
-    private static final Property.Builder BUILDER = Property.builder("server-list-bypass");
+    private static final String NAMESPACE = "server-list-bypass";
     public static final BooleanProperty ENABLED =
-      BUILDER.ofBoolean(
-        "enabled",
-        "Enable Server List Bypass",
-        new String[] {"--server-list-bypass"},
-        "Whether to ping the server list before connecting. (Bypasses anti-bots like EpicGuard)",
-        false);
-    public static final MinMaxPropertyLink DELAY =
-      new MinMaxPropertyLink(
-        BUILDER.ofInt(
-          "min-delay",
-          "Min delay (seconds)",
-          new String[] {"--server-list-bypass-min-delay"},
-          "Minimum delay between joining the server",
-          1,
-          0,
-          Integer.MAX_VALUE,
-          1),
-        BUILDER.ofInt(
-          "max-delay",
-          "Max delay (seconds)",
-          new String[] {"--server-list-bypass-max-delay"},
-          "Maximum delay between joining the server",
-          3,
-          0,
-          Integer.MAX_VALUE,
-          1));
+      ImmutableBooleanProperty.builder()
+        .namespace(NAMESPACE)
+        .key("enabled")
+        .uiName("Enable Server List Bypass")
+        .description("Whether to ping the server list before connecting.")
+        .defaultValue(false)
+        .build();
+    public static final MinMaxProperty DELAY = ImmutableMinMaxProperty.builder()
+      .namespace(NAMESPACE)
+      .key("delay")
+      .minValue(0)
+      .maxValue(Integer.MAX_VALUE)
+      .minEntry(ImmutableMinMaxPropertyEntry.builder()
+        .uiName("Min delay (seconds)")
+        .description("Minimum delay between joining the server")
+        .defaultValue(1)
+        .build())
+      .maxEntry(ImmutableMinMaxPropertyEntry.builder()
+        .uiName("Max delay (seconds)")
+        .description("Maximum delay between joining the server")
+        .defaultValue(3)
+        .build())
+      .build();
   }
 }

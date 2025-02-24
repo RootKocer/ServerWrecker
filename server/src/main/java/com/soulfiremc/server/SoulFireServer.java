@@ -20,103 +20,89 @@ package com.soulfiremc.server;
 import ch.jalu.injector.Injector;
 import ch.jalu.injector.InjectorBuilder;
 import com.soulfiremc.builddata.BuildData;
-import com.soulfiremc.server.api.AttackState;
-import com.soulfiremc.server.api.ServerPlugin;
 import com.soulfiremc.server.api.SoulFireAPI;
-import com.soulfiremc.server.api.event.attack.AttackInitEvent;
-import com.soulfiremc.server.api.event.lifecycle.SettingsRegistryInitEvent;
-import com.soulfiremc.server.data.TranslationMapper;
+import com.soulfiremc.server.api.event.attack.InstanceInitEvent;
+import com.soulfiremc.server.api.event.lifecycle.InstanceSettingsRegistryInitEvent;
+import com.soulfiremc.server.api.event.lifecycle.ServerSettingsRegistryInitEvent;
+import com.soulfiremc.server.api.metadata.MetadataHolder;
+import com.soulfiremc.server.database.DatabaseManager;
+import com.soulfiremc.server.database.InstanceEntity;
+import com.soulfiremc.server.database.ServerConfigEntity;
+import com.soulfiremc.server.database.UserEntity;
 import com.soulfiremc.server.grpc.RPCServer;
-import com.soulfiremc.server.plugins.AutoArmor;
-import com.soulfiremc.server.plugins.AutoEat;
-import com.soulfiremc.server.plugins.AutoJump;
-import com.soulfiremc.server.plugins.AutoReconnect;
-import com.soulfiremc.server.plugins.AutoRegister;
-import com.soulfiremc.server.plugins.AutoRespawn;
-import com.soulfiremc.server.plugins.AutoTotem;
-import com.soulfiremc.server.plugins.ChatControl;
-import com.soulfiremc.server.plugins.ChatMessageLogger;
-import com.soulfiremc.server.plugins.ClientBrand;
-import com.soulfiremc.server.plugins.ClientSettings;
-import com.soulfiremc.server.plugins.FakeVirtualHost;
-import com.soulfiremc.server.plugins.ForwardingBypass;
-import com.soulfiremc.server.plugins.InternalPlugin;
-import com.soulfiremc.server.plugins.KillAura;
-import com.soulfiremc.server.plugins.ModLoaderSupport;
-import com.soulfiremc.server.plugins.POVServer;
-import com.soulfiremc.server.plugins.ServerListBypass;
-import com.soulfiremc.server.settings.AccountSettings;
-import com.soulfiremc.server.settings.BotSettings;
-import com.soulfiremc.server.settings.DevSettings;
-import com.soulfiremc.server.settings.ProxySettings;
+import com.soulfiremc.server.settings.instance.AISettings;
+import com.soulfiremc.server.settings.instance.AccountSettings;
+import com.soulfiremc.server.settings.instance.BotSettings;
+import com.soulfiremc.server.settings.instance.ProxySettings;
+import com.soulfiremc.server.settings.lib.ServerSettingsDelegate;
 import com.soulfiremc.server.settings.lib.ServerSettingsRegistry;
-import com.soulfiremc.server.settings.lib.SettingsHolder;
+import com.soulfiremc.server.settings.server.DevSettings;
+import com.soulfiremc.server.settings.server.ServerSettings;
 import com.soulfiremc.server.spark.SFSparkPlugin;
-import com.soulfiremc.server.user.AuthSystem;
-import com.soulfiremc.server.util.SFUpdateChecker;
-import com.soulfiremc.server.viaversion.SFViaLoader;
-import com.soulfiremc.server.viaversion.platform.SFViaAprilFools;
-import com.soulfiremc.server.viaversion.platform.SFViaBackwards;
-import com.soulfiremc.server.viaversion.platform.SFViaBedrock;
-import com.soulfiremc.server.viaversion.platform.SFViaLegacy;
-import com.soulfiremc.server.viaversion.platform.SFViaPlatform;
-import com.soulfiremc.server.viaversion.platform.SFViaRewind;
-import com.soulfiremc.util.KeyHelper;
-import com.soulfiremc.util.SFFeatureFlags;
-import com.soulfiremc.util.SFPathConstants;
-import com.soulfiremc.util.ShutdownManager;
-import com.viaversion.viaversion.ViaManagerImpl;
+import com.soulfiremc.server.user.*;
+import com.soulfiremc.server.util.SFHelpers;
+import com.soulfiremc.server.util.SFPathConstants;
+import com.soulfiremc.server.util.TimeUtil;
+import com.soulfiremc.server.util.structs.CachedLazyObject;
+import com.soulfiremc.server.util.structs.SFUpdateChecker;
+import com.soulfiremc.server.util.structs.ShutdownManager;
+import com.soulfiremc.server.viaversion.SFVLLoaderImpl;
+import com.soulfiremc.server.viaversion.SFViaPlatform;
+import com.viaversion.vialoader.ViaLoader;
+import com.viaversion.vialoader.impl.platform.*;
 import com.viaversion.viaversion.api.Via;
-import com.viaversion.viaversion.protocol.ProtocolManagerImpl;
-import io.jsonwebtoken.Jwts;
-import it.unimi.dsi.fastutil.ints.Int2ObjectArrayMap;
-import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
-import it.unimi.dsi.fastutil.ints.Int2ObjectMaps;
+import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.core.config.Configurator;
+import org.hibernate.SessionFactory;
+import org.pf4j.PluginManager;
+
 import java.io.IOException;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Date;
-import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
+import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicReference;
-import javax.crypto.SecretKey;
-import lombok.Getter;
-import lombok.extern.slf4j.Slf4j;
-import net.kyori.adventure.text.TranslatableComponent;
-import net.kyori.adventure.text.flattener.ComponentFlattener;
-import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
-import org.apache.logging.log4j.Level;
-import org.apache.logging.log4j.core.config.Configurator;
-import org.pf4j.PluginManager;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
+/**
+ * The main class of the SoulFire server.
+ * A SoulFire server can hold and manage multiple instances.
+ * It also provides an RPC server to communicate with the SoulFire client.
+ * More than one SoulFireServer can be running at the same time, but on different ports.
+ * Usually there is only one SoulFireServer running on a jvm, but it is possible to run multiple.
+ */
 @Slf4j
 @Getter
 public class SoulFireServer {
-  public static final ComponentFlattener FLATTENER =
-    ComponentFlattener.basic().toBuilder()
-      .mapper(TranslatableComponent.class, TranslationMapper.INSTANCE)
-      .build();
-  public static final PlainTextComponentSerializer PLAIN_MESSAGE_SERIALIZER =
-    PlainTextComponentSerializer.builder().flattener(FLATTENER).build();
+  public static final ThreadLocal<SoulFireServer> CURRENT = new ThreadLocal<>();
 
   private final Injector injector =
     new InjectorBuilder().addDefaultHandlers("com.soulfiremc").create();
-  @Getter
-  private final ExecutorService threadPool = Executors.newCachedThreadPool();
-  private final Map<String, String> serviceServerConfig = new HashMap<>();
-  private final Int2ObjectMap<AttackManager> attacks =
-    Int2ObjectMaps.synchronize(new Int2ObjectArrayMap<>());
+  private final SoulFireScheduler.RunnableWrapper runnableWrapper = runnable -> () -> {
+    CURRENT.set(this);
+    try {
+      runnable.run();
+    } finally {
+      CURRENT.remove();
+    }
+  };
+  private final SoulFireScheduler scheduler = new SoulFireScheduler(log, runnableWrapper);
+  private final Map<UUID, InstanceManager> instances = new ConcurrentHashMap<>();
+  private final MetadataHolder metadata = new MetadataHolder();
+  private final ServerSettingsDelegate settingsSource;
   private final RPCServer rpcServer;
-  private final ServerSettingsRegistry settingsRegistry;
-  private final SecretKey jwtSecretKey;
+  private final AuthSystem authSystem;
+  private final ServerSettingsRegistry serverSettingsRegistry;
+  private final ServerSettingsRegistry instanceSettingsRegistry;
   private final PluginManager pluginManager;
   private final ShutdownManager shutdownManager;
+  private final SessionFactory sessionFactory;
   private final Path baseDirectory;
 
   public SoulFireServer(
@@ -124,8 +110,9 @@ public class SoulFireServer {
     int port,
     PluginManager pluginManager,
     Instant startTime,
-    AuthSystem authSystem,
     Path baseDirectory) {
+    log.info("Starting SoulFire v{}...", BuildData.VERSION);
+
     this.pluginManager = pluginManager;
     this.shutdownManager = new ShutdownManager(this::shutdownHook, pluginManager);
     this.baseDirectory = baseDirectory;
@@ -133,16 +120,94 @@ public class SoulFireServer {
     // Register into injector
     injector.register(SoulFireServer.class, this);
 
-    // Init API
-    SoulFireAPI.setSoulFire(this);
-
     injector.register(ShutdownManager.class, shutdownManager);
 
-    this.jwtSecretKey = KeyHelper.getOrCreateJWTSecretKey(SFPathConstants.getSecretKeyFile(baseDirectory));
+    this.sessionFactory = DatabaseManager.forSqlite(baseDirectory.resolve("soulfire.sqlite"));
+    injector.register(SessionFactory.class, sessionFactory);
 
-    rpcServer = new RPCServer(host, port, injector, jwtSecretKey, authSystem);
+    this.settingsSource = new ServerSettingsDelegate(new CachedLazyObject<>(() ->
+      sessionFactory.fromTransaction(session -> {
+        var entity = session.find(ServerConfigEntity.class, 1);
+        if (entity == null) {
+          entity = new ServerConfigEntity();
+          session.persist(entity);
+        }
+
+        return entity.settings();
+      }), 1, TimeUnit.SECONDS));
+    this.authSystem = new AuthSystem(this);
+    this.rpcServer = new RPCServer(host, port, injector, authSystem);
+
+    var configDirectory = SFPathConstants.getConfigDirectory(baseDirectory);
+    var viaStart =
+      scheduler.runAsync(
+        () -> {
+          ViaLoader.init(
+            new SFViaPlatform(configDirectory.resolve("ViaVersion")),
+            new SFVLLoaderImpl(),
+            null,
+            null,
+            ViaBackwardsPlatformImpl::new,
+            ViaRewindPlatformImpl::new,
+            ViaLegacyPlatformImpl::new,
+            ViaAprilFoolsPlatformImpl::new,
+            ViaBedrockPlatformImpl::new
+          );
+
+          TimeUtil.waitCondition(SFHelpers.not(Via.getManager().getProtocolManager()::hasLoadedMappings));
+        });
+    var sparkStart =
+      scheduler.runAsync(
+        () -> {
+          var sparkPlugin = new SFSparkPlugin(configDirectory.resolve("spark"), this);
+          sparkPlugin.init();
+        });
+
+    var updateCheck =
+      CompletableFuture.supplyAsync(
+        () -> {
+          log.info("Checking for updates...");
+          return SFUpdateChecker.getInstance(this).join().getUpdateVersion().orElse(null);
+        }, scheduler);
+
+    CompletableFuture.allOf(viaStart, sparkStart, updateCheck).join();
+
+    // Via is ready, we can now set up all config stuff
+    setupLoggingAndVia();
+
+    var newVersion = updateCheck.join();
+    if (newVersion != null) {
+      log.warn(
+        "SoulFire is outdated! Current version: {}, latest version: {}",
+        BuildData.VERSION,
+        newVersion);
+    } else {
+      log.info("SoulFire is up to date!");
+    }
+
+    SoulFireAPI.postEvent(
+      new ServerSettingsRegistryInitEvent(
+        this,
+        serverSettingsRegistry =
+          new ServerSettingsRegistry()
+            .addInternalPage(ServerSettings.class, "Server Settings", "server")
+            .addInternalPage(DevSettings.class, "Dev Settings", "bug")));
+    SoulFireAPI.postEvent(
+      new InstanceSettingsRegistryInitEvent(
+        this,
+        instanceSettingsRegistry =
+          new ServerSettingsRegistry()
+            // Needs Via loaded to have all protocol versions
+            .addInternalPage(BotSettings.class, "Bot Settings", "bot")
+            .addInternalPage(AccountSettings.class, "Account Settings", "users")
+            .addInternalPage(ProxySettings.class, "Proxy Settings", "waypoints")
+            .addInternalPage(AISettings.class, "AI Settings", "sparkles")));
+
+    log.info("Loading instances...");
+    loadInstances();
+
     var rpcServerStart =
-      CompletableFuture.runAsync(
+      scheduler.runAsync(
         () -> {
           try {
             rpcServer.start();
@@ -151,200 +216,105 @@ public class SoulFireServer {
           }
         });
 
-    log.info("Starting SoulFire v{}...", BuildData.VERSION);
-
-    var configDirectory = SFPathConstants.getConfigDirectory(baseDirectory);
-    var viaStart =
-      CompletableFuture.runAsync(
-        () -> {
-          // Init via
-          var platform = new SFViaPlatform(configDirectory.resolve("ViaVersion"));
-
-          Via.init(
-            ViaManagerImpl.builder()
-              .platform(platform)
-              .injector(platform.injector())
-              .loader(new SFViaLoader())
-              .build());
-
-          platform.init();
-
-          // For ViaLegacy
-          Via.getManager().getProtocolManager().setMaxProtocolPathSize(Integer.MAX_VALUE);
-          Via.getManager().getProtocolManager().setMaxPathDeltaIncrease(-1);
-          ((ProtocolManagerImpl) Via.getManager().getProtocolManager()).refreshVersions();
-
-          Via.getManager()
-            .addEnableListener(
-              () -> {
-                new SFViaRewind(configDirectory.resolve("ViaRewind")).init();
-                new SFViaBackwards(configDirectory.resolve("ViaBackwards")).init();
-                new SFViaAprilFools(configDirectory.resolve("ViaAprilFools")).init();
-                new SFViaLegacy(configDirectory.resolve("ViaLegacy")).init();
-                new SFViaBedrock(configDirectory.resolve("ViaBedrock")).init();
-              });
-
-          var manager = (ViaManagerImpl) Via.getManager();
-          manager.init();
-
-          manager.getPlatform().getConf().setCheckForUpdates(false);
-
-          manager.onServerLoaded();
-        });
-    var sparkStart =
-      CompletableFuture.runAsync(
-        () -> {
-          var sparkPlugin = new SFSparkPlugin(configDirectory.resolve("spark"), this);
-          sparkPlugin.init();
-        });
-
-    var newVersion = new AtomicReference<String>();
-    var updateCheck =
-      CompletableFuture.runAsync(
-        () -> {
-          log.info("Checking for updates...");
-          newVersion.set(SFUpdateChecker.getInstance().join().getUpdateVersion().orElse(null));
-        });
-
-    CompletableFuture.allOf(rpcServerStart, viaStart, sparkStart, updateCheck).join();
-
-    if (newVersion.get() != null) {
-      log.warn(
-        "SoulFire is outdated! Current version: {}, latest version: {}",
-        BuildData.VERSION,
-        newVersion.get());
-    } else {
-      log.info("SoulFire is up to date!");
-    }
-
-    registerInternalServerExtensions();
-    registerServerExtensions();
-
-    for (var serverExtension : SoulFireAPI.getServerExtensions()) {
-      serverExtension.onEnable(this);
-    }
-
-    SoulFireAPI.postEvent(
-      new SettingsRegistryInitEvent(
-        settingsRegistry =
-          new ServerSettingsRegistry()
-            // Needs Via loaded to have all protocol versions
-            .addClass(BotSettings.class, "Bot Settings", true)
-            .addClass(DevSettings.class, "Dev Settings", true)
-            .addClass(AccountSettings.class, "Account Settings", true)
-            .addClass(ProxySettings.class, "Proxy Settings", true)));
+    rpcServerStart.join();
 
     log.info(
       "Finished loading! (Took {}ms)", Duration.between(startTime, Instant.now()).toMillis());
   }
 
-  private static void registerInternalServerExtensions() {
-    var plugins =
-      new InternalPlugin[] {
-        new ClientBrand(),
-        new ClientSettings(),
-        new ChatControl(),
-        new AutoReconnect(),
-        new AutoRegister(),
-        new AutoRespawn(),
-        new AutoTotem(),
-        new AutoJump(),
-        new AutoArmor(),
-        new AutoEat(),
-        new ChatMessageLogger(),
-        new ServerListBypass(),
-        new FakeVirtualHost(), // Needs to be before ModLoaderSupport to not break it
-        SFFeatureFlags.MOD_SUPPORT
-          ? new ModLoaderSupport()
-          : null, // Needs to be before ForwardingBypass to not break it
-        new ForwardingBypass(),
-        new KillAura(),
-        new POVServer()
-      };
+  public EmailSender emailSender() {
+    return switch (settingsSource.get(ServerSettings.EMAIL_TYPE, ServerSettings.EmailType.class)) {
+      case CONSOLE -> injector.getSingleton(ConsoleEmailSender.class);
+      case SMTP -> injector.getSingleton(SmtpEmailSender.class);
+    };
+  }
 
-    for (var plugin : plugins) {
-      if (plugin == null) {
-        continue;
+  public void configUpdateHook() {
+    setupLoggingAndVia();
+  }
+
+  public void setupLoggingAndVia() {
+    Via.getManager().debugHandler().setEnabled(settingsSource.get(DevSettings.VIA_DEBUG));
+
+    Configurator.setRootLevel(settingsSource.get(DevSettings.CORE_DEBUG) ? Level.DEBUG : Level.INFO);
+    Configurator.setLevel("io.netty", settingsSource.get(DevSettings.NETTY_DEBUG) ? Level.DEBUG : Level.INFO);
+    Configurator.setLevel("io.grpc", settingsSource.get(DevSettings.GRPC_DEBUG) ? Level.DEBUG : Level.INFO);
+    Configurator.setLevel("org.geysermc.mcprotocollib", settingsSource.get(DevSettings.MCPROTOCOLLIB_DEBUG) ? Level.DEBUG : Level.INFO);
+  }
+
+  private void loadInstances() {
+    try {
+      for (var instanceData : sessionFactory.fromTransaction(s ->
+        s.createQuery("FROM InstanceEntity", InstanceEntity.class).list())) {
+        try {
+          var instance = new InstanceManager(this, sessionFactory, instanceData);
+          SoulFireAPI.postEvent(new InstanceInitEvent(instance));
+
+          instances.put(instance.id(), instance);
+
+          log.info("Restored instance with id {}", instance.id());
+        } catch (Exception e) {
+          log.error("Failed to load existing instance", e);
+        }
       }
-
-      SoulFireAPI.registerServerExtension(plugin);
+    } catch (Exception e) {
+      log.error("Failed to load existing instances", e);
     }
   }
 
-  public static void setupLoggingAndVia(SettingsHolder settingsHolder) {
-    Via.getManager().debugHandler().setEnabled(settingsHolder.get(DevSettings.VIA_DEBUG));
-    setupLogging(settingsHolder);
-  }
-
-  public static void setupLogging(SettingsHolder settingsHolder) {
-    var level = settingsHolder.get(DevSettings.CORE_DEBUG) ? Level.DEBUG : Level.INFO;
-    var nettyLevel = settingsHolder.get(DevSettings.NETTY_DEBUG) ? Level.DEBUG : Level.INFO;
-    var grpcLevel = settingsHolder.get(DevSettings.GRPC_DEBUG) ? Level.DEBUG : Level.INFO;
-    Configurator.setRootLevel(level);
-    Configurator.setLevel("io.netty", nettyLevel);
-    Configurator.setLevel("io.grpc", grpcLevel);
-  }
-
-  private void registerServerExtensions() {
-    pluginManager.getExtensions(ServerPlugin.class).forEach(SoulFireAPI::registerServerExtension);
-  }
-
-  public String generateRemoteUserJWT() {
-    return generateJWT("remote-user");
-  }
-
-  public String generateIntegratedUserJWT() {
-    return generateJWT("integrated-user");
-  }
-
-  private String generateJWT(String subject) {
-    return Jwts.builder()
-      .subject(subject)
-      .issuedAt(Date.from(Instant.now()))
-      .signWith(jwtSecretKey, Jwts.SIG.HS256)
-      .compact();
-  }
-
   private void shutdownHook() {
-    // Shutdown the attacks if there is any
-    stopAllAttacks().join();
-
-    // Shutdown scheduled tasks
-    threadPool.shutdown();
-
     // Shut down RPC
     try {
       rpcServer.shutdown();
     } catch (InterruptedException e) {
       log.error("Failed to stop RPC server", e);
     }
+
+    // Shutdown the attacks if there is any
+    shutdownInstances().join();
+
+    // Shutdown scheduled tasks
+    scheduler.shutdown();
+
+    // Shutdown database
+    sessionFactory.close();
   }
 
-  public int startAttack(SettingsHolder settingsHolder) {
-    var attackManager = new AttackManager(this, settingsHolder);
-    SoulFireAPI.postEvent(new AttackInitEvent(attackManager));
+  public UUID createInstance(String friendlyName, SoulFireUser owner) {
+    var instanceEntity = sessionFactory.fromTransaction(s -> {
+      var newInstanceEntity = new InstanceEntity();
+      newInstanceEntity.friendlyName(friendlyName);
+      newInstanceEntity.icon(InstanceEntity.randomInstanceIcon());
+      newInstanceEntity.owner(s.find(UserEntity.class, owner.getUniqueId()));
+      s.persist(newInstanceEntity);
 
-    attacks.put(attackManager.id(), attackManager);
+      return newInstanceEntity;
+    });
+    var instanceManager = new InstanceManager(this, sessionFactory, instanceEntity);
+    SoulFireAPI.postEvent(new InstanceInitEvent(instanceManager));
 
-    attackManager.start();
+    instances.put(instanceManager.id(), instanceManager);
 
-    log.debug("Started attack with id {}", attackManager.id());
+    log.debug("Created instance with id {}", instanceManager.id());
 
-    return attackManager.id();
+    return instanceManager.id();
   }
 
-  public void toggleAttackState(int id, boolean pause) {
-    attacks.get(id).attackState(pause ? AttackState.PAUSED : AttackState.RUNNING);
+  public CompletableFuture<?> shutdownInstances() {
+    return CompletableFuture.allOf(instances.values().stream()
+      .map(InstanceManager::shutdownHook)
+      .toArray(CompletableFuture[]::new));
   }
 
-  public CompletableFuture<?> stopAllAttacks() {
-    return CompletableFuture.allOf(
-      Set.copyOf(attacks.keySet()).stream()
-        .map(this::stopAttack)
-        .toArray(CompletableFuture[]::new));
+  public Optional<CompletableFuture<?>> deleteInstance(UUID id) {
+    sessionFactory.inTransaction(s -> s.createMutationQuery("DELETE FROM InstanceEntity WHERE id = :id")
+      .setParameter("id", id)
+      .executeUpdate());
+
+    return Optional.ofNullable(instances.remove(id)).map(InstanceManager::deleteInstance);
   }
 
-  public CompletableFuture<?> stopAttack(int id) {
-    return attacks.remove(id).stop();
+  public Optional<InstanceManager> getInstance(UUID id) {
+    return Optional.ofNullable(instances.get(id));
   }
 }

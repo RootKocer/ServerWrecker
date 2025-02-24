@@ -29,34 +29,32 @@ public class OffsetHelper {
     }
 
     var maxHorizontalOffset = offsetData.maxHorizontalOffset();
-    var maxVerticalOffset = offsetData.maxVerticalOffset();
-
+    var seed = MathHelper.getSeed(block.getX(), 0, block.getZ());
     return switch (offsetData.offsetType()) {
       case XYZ -> {
-        var seed = MathHelper.getSeed(block.getX(), 0, block.getZ());
+        var maxVerticalOffset = offsetData.maxVerticalOffset();
         var yOffset =
           ((double) ((float) (seed >> 4 & 15L) / 15.0F) - 1.0) * (double) maxVerticalOffset;
         var xOffset =
-          MathHelper.doubleClamp(
+          MathHelper.clamp(
             ((double) ((float) (seed & 15L) / 15.0F) - 0.5) * 0.5,
             -maxHorizontalOffset,
             maxHorizontalOffset);
         var zOffset =
-          MathHelper.doubleClamp(
+          MathHelper.clamp(
             ((double) ((float) (seed >> 8 & 15L) / 15.0F) - 0.5) * 0.5,
             -maxHorizontalOffset,
             maxHorizontalOffset);
         yield Vector3d.from(xOffset, yOffset, zOffset);
       }
       case XZ -> {
-        var seed = MathHelper.getSeed(block.getX(), 0, block.getZ());
         var xOffset =
-          MathHelper.doubleClamp(
+          MathHelper.clamp(
             ((double) ((float) (seed & 15L) / 15.0F) - 0.5) * 0.5,
             -maxHorizontalOffset,
             maxHorizontalOffset);
         var zOffset =
-          MathHelper.doubleClamp(
+          MathHelper.clamp(
             ((double) ((float) (seed >> 8 & 15L) / 15.0F) - 0.5) * 0.5,
             -maxHorizontalOffset,
             maxHorizontalOffset);

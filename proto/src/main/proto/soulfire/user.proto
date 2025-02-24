@@ -1,0 +1,65 @@
+syntax = "proto3";
+
+option java_package = "com.soulfiremc.grpc.generated";
+option java_multiple_files = true;
+
+package soulfire.v1;
+
+import "soulfire/common.proto";
+
+message UserCreateRequest {
+  string username = 1;
+  UserRole role = 2;
+  string email = 3;
+}
+
+message UserCreateResponse {
+  string id = 1;
+}
+
+message UserDeleteRequest {
+  string id = 1;
+}
+
+message UserDeleteResponse {
+}
+
+message UserListRequest {
+}
+
+message UserListResponse {
+  message User {
+    string id = 1;
+    string username = 2;
+    UserRole role = 3;
+    string email = 4;
+  }
+
+  repeated User users = 1;
+}
+
+message UserInfoRequest {
+  string id = 1;
+}
+
+message UserInfoResponse {
+  string username = 1;
+  UserRole role = 2;
+  string email = 3;
+}
+
+// Invalidate all sessions for a user, effectively logging them out of all devices.
+message InvalidateSessionsRequest {
+  string id = 1;
+}
+
+message InvalidateSessionsResponse {
+}
+
+service UserService {
+  rpc createUser(UserCreateRequest) returns (UserCreateResponse);
+  rpc deleteUser(UserDeleteRequest) returns (UserDeleteResponse);
+  rpc listUsers(UserListRequest) returns (UserListResponse);
+  rpc getUserInfo(UserInfoRequest) returns (UserInfoResponse);
+  rpc invalidateSessions(InvalidateSessionsRequest) returns (InvalidateSessionsResponse);
+}

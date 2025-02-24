@@ -17,28 +17,20 @@
  */
 package com.soulfiremc.server.grpc;
 
+import com.soulfiremc.grpc.generated.LoginServiceGrpc;
 import com.soulfiremc.server.user.AuthSystem;
-import com.soulfiremc.util.RPCConstants;
-import io.grpc.Context;
-import io.grpc.Contexts;
-import io.grpc.Metadata;
-import io.grpc.ServerCall;
-import io.grpc.ServerCallHandler;
-import io.grpc.ServerInterceptor;
-import io.grpc.Status;
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.Jws;
-import io.jsonwebtoken.JwtException;
-import io.jsonwebtoken.JwtParser;
-import io.jsonwebtoken.Jwts;
-import javax.crypto.SecretKey;
+import com.soulfiremc.server.util.RPCConstants;
+import io.grpc.*;
+import io.jsonwebtoken.*;
+
+import java.util.Objects;
 
 public class JwtServerInterceptor implements ServerInterceptor {
   private final JwtParser parser;
   private final AuthSystem authSystem;
 
-  public JwtServerInterceptor(SecretKey jwtKey, AuthSystem authSystem) {
-    this.parser = Jwts.parser().verifyWith(jwtKey).build();
+  public JwtServerInterceptor(AuthSystem authSystem) {
+    this.parser = Jwts.parser().verifyWith(authSystem.jwtSecretKey()).build();
     this.authSystem = authSystem;
   }
 
@@ -47,9 +39,19 @@ public class JwtServerInterceptor implements ServerInterceptor {
     ServerCall<ReqT, RespT> serverCall,
     Metadata metadata,
     ServerCallHandler<ReqT, RespT> serverCallHandler) {
-    var value = metadata.get(RPCConstants.AUTHORIZATION_METADATA_KEY);
+
+    // Login is not authed
+    if (Objects.equals(serverCall.getMethodDescriptor().getServiceName(), LoginServiceGrpc.SERVICE_NAME)) {
+      return Contexts.interceptCall(
+        Context.current(),
+        serverCall,
+        metadata,
+        serverCallHandler
+      );
+    }
 
     var status = Status.OK;
+    var value = metadata.get(RPCConstants.AUTHORIZATION_METADATA_KEY);
     if (value == null) {
       status = Status.UNAUTHENTICATED.withDescription("Authorization token is missing");
     } else if (!value.startsWith(RPCConstants.BEARER_TYPE)) {
@@ -57,7 +59,7 @@ public class JwtServerInterceptor implements ServerInterceptor {
     } else {
       Jws<Claims> claims = null;
       // remove authorization type prefix
-      var token = value.substring(RPCConstants.BEARER_TYPE.length()).trim();
+      var token = value.substring(RPCConstants.BEARER_TYPE.length()).strip();
       try {
         // verify token signature and parse claims
         claims = parser.parseSignedClaims(token);
@@ -65,14 +67,23 @@ public class JwtServerInterceptor implements ServerInterceptor {
         status = Status.UNAUTHENTICATED.withDescription(e.getMessage()).withCause(e);
       }
       if (claims != null) {
-        // set client id into current context
-        var ctx =
-          Context.current()
-            .withValue(
-              ServerRPCConstants.USER_CONTEXT_KEY,
-              authSystem.authenticate(
-                claims.getPayload().getSubject(), claims.getPayload().getIssuedAt()));
-        return Contexts.interceptCall(ctx, serverCall, metadata, serverCallHandler);
+        var user = authSystem.authenticate(
+          claims.getPayload().getSubject(), claims.getPayload().getIssuedAt().toInstant());
+
+        if (user.isPresent()) {
+          // set client id into current context
+          return Contexts.interceptCall(
+            Context.current()
+              .withValue(
+                ServerRPCConstants.USER_CONTEXT_KEY,
+                user.get()),
+            serverCall,
+            metadata,
+            serverCallHandler
+          );
+        } else {
+          status = Status.UNAUTHENTICATED.withDescription("User not found");
+        }
       }
     }
 

@@ -17,74 +17,65 @@
  */
 package com.soulfiremc.server.grpc;
 
-import com.soulfiremc.grpc.generated.ClientDataRequest;
-import com.soulfiremc.grpc.generated.ClientDataResponse;
-import com.soulfiremc.grpc.generated.ClientPlugin;
-import com.soulfiremc.grpc.generated.ConfigServiceGrpc;
-import com.soulfiremc.grpc.generated.PermissionMessage;
+import com.soulfiremc.grpc.generated.*;
 import com.soulfiremc.server.SoulFireServer;
-import com.soulfiremc.server.user.Permission;
-import com.soulfiremc.server.user.Permissions;
+import com.soulfiremc.server.api.Plugin;
+import com.soulfiremc.server.api.PluginInfo;
+import com.soulfiremc.server.api.SoulFireAPI;
+import com.soulfiremc.server.user.PermissionContext;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import io.grpc.stub.StreamObserver;
-import java.util.ArrayList;
-import java.util.Collection;
-import javax.inject.Inject;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
+import javax.inject.Inject;
+import java.util.Arrays;
+import java.util.Collection;
 
 @Slf4j
 @RequiredArgsConstructor(onConstructor_ = @Inject)
 public class ConfigServiceImpl extends ConfigServiceGrpc.ConfigServiceImplBase {
   private final SoulFireServer soulFireServer;
 
-  private Collection<PermissionMessage> getPermissions() {
+  private Collection<GlobalPermissionState> getGlobalPermissions() {
     var user = ServerRPCConstants.USER_CONTEXT_KEY.get();
-    var permissions = new ArrayList<PermissionMessage>();
-    for (var permission : Permission.VALUES) {
-      permissions.add(PermissionMessage.newBuilder()
-        .setId(permission.id())
-        .setDescription(permission.description())
-        .setGranted(user.hasPermission(permission))
-        .build());
-    }
-
-    return permissions;
+    return Arrays.stream(GlobalPermission.values())
+      .filter(permission -> permission != GlobalPermission.UNRECOGNIZED)
+      .map(permission -> GlobalPermissionState.newBuilder()
+        .setGlobalPermission(permission)
+        .setGranted(user.hasPermission(PermissionContext.global(permission)))
+        .build())
+      .toList();
   }
 
-  private Collection<ClientPlugin> getExtensions() {
-    var plugins = new ArrayList<ClientPlugin>();
-    for (var pluginWrapper : soulFireServer.pluginManager().getPlugins()) {
-      var id = pluginWrapper.getPluginId();
-      var description = pluginWrapper.getDescriptor().getPluginDescription();
-      var version = pluginWrapper.getDescriptor().getVersion();
-      var provider = pluginWrapper.getDescriptor().getProvider();
-
-      plugins.add(
-        ClientPlugin.newBuilder()
-          .setId(id)
-          .setDescription(description)
-          .setVersion(version)
-          .setProvider(provider)
-          .build());
-    }
-
-    return plugins;
+  private Collection<ServerPlugin> getPlugins() {
+    return SoulFireAPI.getServerExtensions().stream()
+      .map(Plugin::pluginInfo)
+      .map(PluginInfo::toProto)
+      .toList();
   }
 
   @Override
   public void getClientData(
     ClientDataRequest request, StreamObserver<ClientDataResponse> responseObserver) {
-    ServerRPCConstants.USER_CONTEXT_KEY.get().hasPermissionOrThrow(Permissions.SERVER_CONFIG);
+    ServerRPCConstants.USER_CONTEXT_KEY.get().hasPermissionOrThrow(PermissionContext.global(GlobalPermission.READ_CLIENT_DATA));
 
     try {
+      var currentUSer = ServerRPCConstants.USER_CONTEXT_KEY.get();
       responseObserver.onNext(
         ClientDataResponse.newBuilder()
-          .setUsername(ServerRPCConstants.USER_CONTEXT_KEY.get().getUsername())
-          .addAllPermissions(getPermissions())
-          .addAllPlugins(getExtensions())
-          .addAllPluginSettings(soulFireServer.settingsRegistry().exportSettingsMeta())
+          .setId(currentUSer.getUniqueId().toString())
+          .setUsername(currentUSer.getUsername())
+          .setEmail(currentUSer.getEmail())
+          .setRole(switch (currentUSer.getRole()) {
+            case ADMIN -> UserRole.ADMIN;
+            case USER -> UserRole.USER;
+          })
+          .addAllServerPermissions(getGlobalPermissions())
+          .addAllPlugins(getPlugins())
+          .addAllServerSettings(soulFireServer.serverSettingsRegistry().exportSettingsMeta())
+          .addAllInstanceSettings(soulFireServer.instanceSettingsRegistry().exportSettingsMeta())
           .build());
       responseObserver.onCompleted();
     } catch (Throwable t) {

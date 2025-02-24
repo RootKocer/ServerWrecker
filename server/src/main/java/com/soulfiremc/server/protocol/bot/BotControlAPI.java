@@ -17,39 +17,35 @@
  */
 package com.soulfiremc.server.protocol.bot;
 
-import com.soulfiremc.server.data.AttributeType;
 import com.soulfiremc.server.data.EntityType;
 import com.soulfiremc.server.protocol.BotConnection;
 import com.soulfiremc.server.protocol.SFProtocolConstants;
-import com.soulfiremc.server.protocol.bot.movement.AABB;
+import com.soulfiremc.server.protocol.bot.state.entity.AbstractClientPlayer;
 import com.soulfiremc.server.protocol.bot.state.entity.Entity;
-import com.soulfiremc.server.util.Segment;
+import com.soulfiremc.server.protocol.bot.state.entity.LivingEntity;
+import com.soulfiremc.server.util.mcstructs.AABB;
+import com.soulfiremc.server.util.structs.Segment;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import net.kyori.adventure.key.Key;
+import org.cloudburstmc.math.vector.Vector3d;
+import org.geysermc.mcprotocollib.protocol.data.game.entity.player.PlayerState;
+import org.geysermc.mcprotocollib.protocol.packet.common.serverbound.ServerboundCustomPayloadPacket;
+import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.ServerboundChatCommandPacket;
+import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.ServerboundChatPacket;
+import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.player.ServerboundPlayerAbilitiesPacket;
+import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.player.ServerboundPlayerCommandPacket;
+
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.Comparator;
-import lombok.Getter;
-import lombok.NonNull;
-import lombok.RequiredArgsConstructor;
-import lombok.Setter;
-import lombok.extern.slf4j.Slf4j;
-import net.kyori.adventure.key.Key;
-import org.cloudburstmc.math.vector.Vector3d;
-import org.cloudburstmc.math.vector.Vector3i;
-import org.geysermc.mcprotocollib.protocol.data.game.entity.player.Hand;
-import org.geysermc.mcprotocollib.protocol.data.game.entity.player.InteractAction;
-import org.geysermc.mcprotocollib.protocol.data.game.entity.player.PlayerState;
-import org.geysermc.mcprotocollib.protocol.packet.common.serverbound.ServerboundCustomPayloadPacket;
-import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.ServerboundChatCommandPacket;
-import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.ServerboundChatPacket;
-import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.player.ServerboundInteractPacket;
-import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.player.ServerboundPlayerAbilitiesPacket;
-import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.player.ServerboundPlayerCommandPacket;
-import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.player.ServerboundSwingPacket;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * This class is used to control the bot. The goal is to reduce friction for doing simple things.
@@ -58,26 +54,81 @@ import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.player.Serv
 @RequiredArgsConstructor
 public class BotControlAPI {
   private final BotConnection connection;
-  private final SessionDataManager dataManager;
   private final SecureRandom secureRandom = new SecureRandom();
-  @Getter
-  @Setter
-  private int attackCooldownTicks = 0;
+  private final AtomicReference<ControllingTask> controllingTask = new AtomicReference<>();
 
   public void tick() {
-    if (attackCooldownTicks > 0) {
-      attackCooldownTicks--;
+    var localTask = this.controllingTask.get();
+    if (localTask != null) {
+      if (localTask.isDone()) {
+        localTask.stop();
+        unregisterControllingTask(localTask);
+      } else {
+        localTask.tick();
+
+        if (localTask.isDone()) {
+          localTask.stop();
+          unregisterControllingTask(localTask);
+        }
+      }
     }
   }
 
+  public boolean stopControllingTask() {
+    return this.controllingTask.updateAndGet(
+      current -> {
+        if (current != null) {
+          current.stop();
+          return null;
+        }
+
+        return null;
+      }) != null;
+  }
+
+  public boolean activelyControlled() {
+    return this.controllingTask.get() != null;
+  }
+
+  public void registerControllingTask(ControllingTask task) {
+    this.controllingTask.updateAndGet(
+      current -> {
+        if (current != null) {
+          current.stop();
+        }
+
+        return task;
+      });
+  }
+
+  public void unregisterControllingTask(ControllingTask task) {
+    this.controllingTask.compareAndSet(task, null);
+  }
+
+  public void maybeRegister(ControllingTask task) {
+    this.controllingTask.compareAndSet(null, task);
+  }
+
+  public <M extends ControllingTask.ManualTaskMarker> M getMarkerAndUnregister(Class<M> clazz) {
+    var task = this.controllingTask.get();
+    if (task instanceof ControllingTask.ManualControllingTask manual
+      && clazz.isInstance(manual.marker())) {
+      unregisterControllingTask(task);
+      return clazz.cast(manual.marker());
+    }
+
+    return null;
+  }
+
   public boolean toggleFlight() {
-    var abilitiesData = dataManager.abilitiesData();
-    if (abilitiesData != null && !abilitiesData.allowFlying()) {
+    var dataManager = connection.dataManager();
+    var abilitiesData = dataManager.localPlayer().abilitiesState();
+    if (abilitiesData != null && !abilitiesData.mayfly()) {
       throw new IllegalStateException("You can't fly! (Server said so)");
     }
 
-    var newFly = !dataManager.controlState().flying();
-    dataManager.controlState().flying(newFly);
+    var newFly = !dataManager.localPlayer().abilitiesState().flying();
+    dataManager.localPlayer().abilitiesState().flying(newFly);
 
     // Let the server know we are flying
     connection.sendPacket(new ServerboundPlayerAbilitiesPacket(newFly));
@@ -86,26 +137,28 @@ public class BotControlAPI {
   }
 
   public boolean toggleSprint() {
-    var newSprint = !dataManager.controlState().sprinting();
-    dataManager.controlState().sprinting(newSprint);
+    var dataManager = connection.dataManager();
+    var newSprint = !connection.controlState().sprinting();
+    connection.controlState().sprinting(newSprint);
 
     // Let the server know we are sprinting
     connection.sendPacket(
       new ServerboundPlayerCommandPacket(
-        dataManager.clientEntity().entityId(),
+        dataManager.localPlayer().entityId(),
         newSprint ? PlayerState.START_SPRINTING : PlayerState.STOP_SPRINTING));
 
     return newSprint;
   }
 
   public boolean toggleSneak() {
-    var newSneak = !dataManager.controlState().sneaking();
-    dataManager.controlState().sneaking(newSneak);
+    var dataManager = connection.dataManager();
+    var newSneak = !connection.controlState().sneaking();
+    connection.controlState().sneaking(newSneak);
 
     // Let the server know we are sneaking
     connection.sendPacket(
       new ServerboundPlayerCommandPacket(
-        dataManager.clientEntity().entityId(),
+        dataManager.localPlayer().entityId(),
         newSneak ? PlayerState.START_SNEAKING : PlayerState.STOP_SNEAKING));
 
     return newSneak;
@@ -154,8 +207,8 @@ public class BotControlAPI {
 
   public Vector3d getEntityVisiblePoint(Entity entity) {
     var points = new ArrayList<Vector3d>();
-    double halfWidth = entity.width() / 2;
-    double halfHeight = entity.height() / 2;
+    double halfWidth = entity.dimensions().width() / 2;
+    double halfHeight = entity.dimensions().height() / 2;
     for (var x = -1; x <= 1; x++) {
       for (var y = 0; y <= 2; y++) {
         for (var z = -1; z <= 1; z++) {
@@ -172,7 +225,8 @@ public class BotControlAPI {
       }
     }
 
-    var eye = dataManager.clientEntity().eyePosition();
+    var dataManager = connection.dataManager();
+    var eye = dataManager.localPlayer().eyePosition();
 
     // sort by distance to the bot
     points.sort(Comparator.comparingDouble(eye::distance));
@@ -191,50 +245,30 @@ public class BotControlAPI {
     return null;
   }
 
-  public void attack(@NonNull Entity entity, boolean swingArm) {
-    if (!entity.entityType().attackable()) {
-      log.error("Entity {} can't be attacked!", entity.entityId());
-      return;
-    }
-
-    var packet =
-      new ServerboundInteractPacket(
-        entity.entityId(), InteractAction.ATTACK, dataManager.controlState().sneaking());
-    connection.sendPacket(packet);
-    if (swingArm) {
-      swingArm();
-    }
-
-    attackCooldownTicks = (int) getHitItemCooldownTicks();
-  }
-
   public Entity getClosestEntity(
     double range,
-    String whitelistedUser,
+    List<String> whitelistedUsers,
     boolean ignoreBots,
     boolean onlyInteractable,
     boolean mustBeSeen) {
-    if (dataManager.clientEntity() == null) {
+    var dataManager = connection.dataManager();
+    if (dataManager.localPlayer() == null) {
       return null;
     }
 
-    var x = dataManager.clientEntity().x();
-    var y = dataManager.clientEntity().y();
-    var z = dataManager.clientEntity().z();
+    var x = dataManager.localPlayer().x();
+    var y = dataManager.localPlayer().y();
+    var z = dataManager.localPlayer().z();
 
     Entity closest = null;
     var closestDistance = Double.MAX_VALUE;
 
-    for (var entity : dataManager.entityTrackerState().getEntities()) {
-      if (entity.entityId() == dataManager.clientEntity().entityId()) {
+    for (var entity : dataManager.currentLevel().getEntities()) {
+      if (entity.entityId() == dataManager.localPlayer().entityId()) {
         continue;
       }
 
-      var distance =
-        Math.sqrt(
-          Math.pow(entity.x() - x, 2)
-            + Math.pow(entity.y() - y, 2)
-            + Math.pow(entity.z() - z, 2));
+      var distance = entity.pos().distance(x, y, z);
       if (distance > range) {
         continue;
       }
@@ -243,27 +277,36 @@ public class BotControlAPI {
         continue;
       }
 
-      if (whitelistedUser != null
-        && !whitelistedUser.isEmpty()
+      if (onlyInteractable && entity instanceof LivingEntity le && !le.canBeSeenAsEnemy()) {
+        continue;
+      }
+
+      if (onlyInteractable && entity instanceof AbstractClientPlayer acp && (acp.isCreative() || acp.isSpectator())) {
+        continue;
+      }
+
+      if (whitelistedUsers != null
+        && !whitelistedUsers.isEmpty()
         && entity.entityType() == EntityType.PLAYER) {
         var connectedUsers = dataManager.playerListState();
         var playerListEntry = connectedUsers.entries().get(entity.uuid());
-        if (playerListEntry != null && playerListEntry.getProfile() != null) {
-          if (playerListEntry.getProfile().getName().equalsIgnoreCase(whitelistedUser)) {
-            continue;
-          }
+        if (playerListEntry != null
+          && playerListEntry.getProfile() != null
+          && whitelistedUsers.stream()
+          .anyMatch(whitelistedUser -> playerListEntry.getProfile().getName().equalsIgnoreCase(whitelistedUser))) {
+          continue;
         }
       }
 
       if (ignoreBots
-        && dataManager.connection().attackManager().botConnections().values().stream()
+        && dataManager.connection().instanceManager().botConnections().values().stream()
         .anyMatch(
           b -> {
-            if (b.dataManager().clientEntity() == null) {
+            if (b.dataManager().localPlayer() == null) {
               return false;
             }
 
-            return b.dataManager().clientEntity().uuid().equals(entity.uuid());
+            return b.dataManager().localPlayer().uuid().equals(entity.uuid());
           })) {
         continue;
       }
@@ -286,34 +329,22 @@ public class BotControlAPI {
   }
 
   public boolean canSee(Vector3d vec) { // intensive method, don't use it too often
+    var dataManager = connection.dataManager();
     var level = dataManager.currentLevel();
 
-    var eye = dataManager.clientEntity().eyePosition();
+    var eye = dataManager.localPlayer().eyePosition();
     var distance = eye.distance(vec);
     if (distance >= 256) {
       return false;
     }
 
-    if (!level.isChunkLoaded(Vector3i.from(vec.getX(), vec.getY(), vec.getZ()))) {
+    var blockVec = vec.toInt();
+    if (!level.isChunkPositionLoaded(blockVec.getX(), blockVec.getZ())) {
       return false;
     }
 
     var segment = new Segment(eye, vec);
-    var boxes = level.getCollisionBoxes(new AABB(eye, vec));
+    var boxes = level.getBlockCollisionBoxes(new AABB(eye, vec));
     return !segment.intersects(boxes);
-  }
-
-  public void swingArm() {
-    var swingPacket = new ServerboundSwingPacket(Hand.MAIN_HAND);
-    connection.sendPacket(swingPacket);
-  }
-
-  public float getHitItemCooldownTicks() {
-    dataManager.inventoryManager().applyItemAttributes();
-
-    return (float)
-      (1.0
-        / dataManager.clientEntity().attributeValue(AttributeType.ATTACK_SPEED)
-        * 20.0);
   }
 }

@@ -17,35 +17,39 @@
  */
 package com.soulfiremc.server.data;
 
-import com.soulfiremc.server.protocol.bot.movement.AABB;
-import com.soulfiremc.util.ResourceHelper;
+import com.soulfiremc.server.util.SFHelpers;
+import com.soulfiremc.server.util.mcstructs.AABB;
+import com.soulfiremc.server.util.mcstructs.Direction;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import java.util.List;
 import org.cloudburstmc.math.vector.Vector3i;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @SuppressWarnings("unused")
-public record BlockShapeGroup(int id, List<BlockShape> blockShapes, double highestY) {
+public record BlockShapeGroup(int id, List<AABB> blockShapes, List<Direction> fullFaceDirections) implements IDValue {
   public static final Int2ObjectMap<BlockShapeGroup> FROM_ID = new Int2ObjectOpenHashMap<>();
   public static final BlockShapeGroup EMPTY;
 
   static {
-    ResourceHelper.getResourceAsString("minecraft/blockshapes.txt")
+    SFHelpers.getResourceAsString("minecraft/block-shapes.txt")
       .lines()
       .forEach(
         line -> {
-          var parts = line.split("\\|");
+          var parts = line.split("\\|", -1);
 
           var id = Integer.parseInt(parts[0]);
-          var blockShapes = new ObjectArrayList<BlockShape>();
+          var blockShapes = new ArrayList<AABB>();
+          var fullFaceDirections = new ArrayList<Direction>();
 
-          if (parts.length > 1) {
-            for (var i = 1; i < parts.length; i++) {
-              var part = parts[i];
+          var shapeString = parts[1];
+          if (!shapeString.isEmpty()) {
+            var shapeParts = shapeString.split(";");
+            for (var part : shapeParts) {
               var subParts = part.split(",");
               var shape =
-                new BlockShape(
+                new AABB(
                   Double.parseDouble(subParts[0]),
                   Double.parseDouble(subParts[1]),
                   Double.parseDouble(subParts[2]),
@@ -56,12 +60,20 @@ public record BlockShapeGroup(int id, List<BlockShape> blockShapes, double highe
             }
           }
 
+          var faceString = parts[2];
+          if (!faceString.isEmpty()) {
+            var fullFaces = faceString.split(",");
+            for (var face : fullFaces) {
+              fullFaceDirections.add(Direction.valueOf(face));
+            }
+          }
+
           FROM_ID.put(
             id,
             new BlockShapeGroup(
               id,
               blockShapes,
-              blockShapes.stream().mapToDouble(BlockShape::maxY).max().orElse(0)));
+              fullFaceDirections));
         });
 
     EMPTY = getById(0);
@@ -72,11 +84,11 @@ public record BlockShapeGroup(int id, List<BlockShape> blockShapes, double highe
   }
 
   public List<AABB> getCollisionBoxes(Vector3i block, BlockType blockType) {
-    var collisionBoxes = new ObjectArrayList<AABB>(blockShapes.size());
+    var collisionBoxes = new ArrayList<AABB>(blockShapes.size());
     for (var shape : blockShapes) {
       var shapeBB =
         new AABB(
-          shape.minX(), shape.minY(), shape.minZ(), shape.maxX(), shape.maxY(), shape.maxZ());
+          shape.minX, shape.minY, shape.minZ, shape.maxX, shape.maxY, shape.maxZ);
 
       // Apply random offset if needed
       shapeBB = shapeBB.move(OffsetHelper.getOffsetForBlock(blockType, block));
@@ -95,7 +107,11 @@ public record BlockShapeGroup(int id, List<BlockShape> blockShapes, double highe
       return false;
     }
 
-    return blockShapes.getFirst().isFullBlock();
+    return blockShapes.getFirst().fullBlock();
+  }
+
+  public boolean hasCollisions() {
+    return !blockShapes.isEmpty();
   }
 
   public boolean hasNoCollisions() {

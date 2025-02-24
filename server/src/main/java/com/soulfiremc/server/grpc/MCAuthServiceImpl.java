@@ -17,60 +17,91 @@
  */
 package com.soulfiremc.server.grpc;
 
-import com.soulfiremc.grpc.generated.AuthRequest;
-import com.soulfiremc.grpc.generated.AuthResponse;
-import com.soulfiremc.grpc.generated.MCAuthServiceGrpc;
-import com.soulfiremc.grpc.generated.MinecraftAccountProto;
-import com.soulfiremc.grpc.generated.ProxyProto;
-import com.soulfiremc.grpc.generated.RefreshRequest;
-import com.soulfiremc.grpc.generated.RefreshResponse;
+import com.soulfiremc.grpc.generated.*;
+import com.soulfiremc.server.SoulFireServer;
 import com.soulfiremc.server.account.MCAuthService;
-import com.soulfiremc.server.account.SFBedrockMicrosoftAuthService;
-import com.soulfiremc.server.account.SFEasyMCAuthService;
-import com.soulfiremc.server.account.SFJavaMicrosoftAuthService;
-import com.soulfiremc.server.account.SFOfflineAuthService;
-import com.soulfiremc.server.account.SFTheAlteningAuthService;
-import com.soulfiremc.server.user.Permissions;
-import com.soulfiremc.settings.account.MinecraftAccount;
-import com.soulfiremc.settings.proxy.SFProxy;
+import com.soulfiremc.server.account.MinecraftAccount;
+import com.soulfiremc.server.settings.instance.AccountSettings;
+import com.soulfiremc.server.user.PermissionContext;
+import com.soulfiremc.server.util.SFHelpers;
+import com.soulfiremc.server.util.structs.CancellationCollector;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
+import io.grpc.stub.ServerCallStreamObserver;
 import io.grpc.stub.StreamObserver;
-import java.util.function.BooleanSupplier;
-import java.util.function.Supplier;
-import javax.inject.Inject;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.jetbrains.annotations.Nullable;
+
+import javax.inject.Inject;
+import java.util.Objects;
+import java.util.UUID;
 
 @Slf4j
 @RequiredArgsConstructor(onConstructor_ = @Inject)
 public class MCAuthServiceImpl extends MCAuthServiceGrpc.MCAuthServiceImplBase {
-  private static @Nullable SFProxy convertProxy(BooleanSupplier hasProxy, Supplier<ProxyProto> proxy) {
-    return hasProxy.getAsBoolean() ? SFProxy.fromProto(proxy.get()) : null;
-  }
-
-  private static MCAuthService<?> convertService(MinecraftAccountProto.AccountTypeProto service) {
-    return switch (service) {
-      case MICROSOFT_JAVA -> new SFJavaMicrosoftAuthService();
-      case MICROSOFT_BEDROCK -> new SFBedrockMicrosoftAuthService();
-      case THE_ALTENING -> new SFTheAlteningAuthService();
-      case EASY_MC -> new SFEasyMCAuthService();
-      case OFFLINE -> new SFOfflineAuthService();
-      case UNRECOGNIZED -> throw new IllegalArgumentException("Unrecognized service");
-    };
-  }
+  private final SoulFireServer soulFireServer;
 
   @Override
-  public void login(AuthRequest request, StreamObserver<AuthResponse> responseObserver) {
-    ServerRPCConstants.USER_CONTEXT_KEY.get().hasPermissionOrThrow(Permissions.AUTHENTICATE_MC_ACCOUNT);
+  public void loginCredentials(CredentialsAuthRequest request, StreamObserver<CredentialsAuthResponse> casted) {
+    var responseObserver = (ServerCallStreamObserver<CredentialsAuthResponse>) casted;
+    var instanceId = UUID.fromString(request.getInstanceId());
+    ServerRPCConstants.USER_CONTEXT_KEY.get().hasPermissionOrThrow(PermissionContext.instance(InstancePermission.AUTHENTICATE_MC_ACCOUNT, instanceId));
 
+    var optionalInstance = soulFireServer.getInstance(instanceId);
+    if (optionalInstance.isEmpty()) {
+      throw new StatusRuntimeException(Status.NOT_FOUND.withDescription("Instance '%s' not found".formatted(instanceId)));
+    }
+
+    var instance = optionalInstance.get();
+    var settings = instance.settingsSource();
+
+    var cancellationCollector = new CancellationCollector(responseObserver);
     try {
-      var account = convertService(request.getService()).createDataAndLogin(request.getPayload(),
-        convertProxy(request::hasProxy, request::getProxy));
+      instance.scheduler().runAsync(() -> {
+        var service = MCAuthService.convertService(request.getService());
+        var results = SFHelpers.maxFutures(settings.get(AccountSettings.ACCOUNT_IMPORT_CONCURRENCY), request.getPayloadList(), payload ->
+              cancellationCollector.add(service.createDataAndLogin(
+                  payload,
+                  settings.get(AccountSettings.USE_PROXIES_FOR_ACCOUNT_AUTH) ? SFHelpers.getRandomEntry(settings.proxies()) : null,
+                  instance.scheduler()
+                ))
+                .thenApply(MinecraftAccount::toProto)
+                .exceptionally(t -> {
+                  log.error("Error authenticating account", t);
+                  return null;
+                }), result -> {
+              if (responseObserver.isCancelled()) {
+                return;
+              }
 
-      responseObserver.onNext(AuthResponse.newBuilder().setAccount(account.join().toProto()).build());
-      responseObserver.onCompleted();
+              if (result == null) {
+                responseObserver.onNext(CredentialsAuthResponse.newBuilder()
+                  .setOneFailure(CredentialsAuthOneFailure.newBuilder()
+                    .build())
+                  .build());
+              } else {
+                responseObserver.onNext(CredentialsAuthResponse.newBuilder()
+                  .setOneSuccess(CredentialsAuthOneSuccess.newBuilder()
+                    .build())
+                  .build());
+              }
+            },
+            cancellationCollector)
+          .stream()
+          .filter(Objects::nonNull)
+          .toList();
+
+        if (responseObserver.isCancelled()) {
+          return;
+        }
+
+        responseObserver.onNext(CredentialsAuthResponse.newBuilder()
+          .setFullList(CredentialsAuthFullList.newBuilder()
+            .addAllAccount(results)
+            .build())
+          .build());
+        responseObserver.onCompleted();
+      });
     } catch (Throwable t) {
       log.error("Error authenticating account", t);
       throw new StatusRuntimeException(Status.INTERNAL.withDescription(t.getMessage()).withCause(t));
@@ -78,13 +109,68 @@ public class MCAuthServiceImpl extends MCAuthServiceGrpc.MCAuthServiceImplBase {
   }
 
   @Override
-  public void refresh(RefreshRequest request, StreamObserver<RefreshResponse> responseObserver) {
-    ServerRPCConstants.USER_CONTEXT_KEY.get().hasPermissionOrThrow(Permissions.AUTHENTICATE_MC_ACCOUNT);
+  public void loginDeviceCode(DeviceCodeAuthRequest request, StreamObserver<DeviceCodeAuthResponse> responseObserver) {
+    var instanceId = UUID.fromString(request.getInstanceId());
+    ServerRPCConstants.USER_CONTEXT_KEY.get().hasPermissionOrThrow(PermissionContext.instance(InstancePermission.AUTHENTICATE_MC_ACCOUNT, instanceId));
 
+    var optionalInstance = soulFireServer.getInstance(instanceId);
+    if (optionalInstance.isEmpty()) {
+      throw new StatusRuntimeException(Status.NOT_FOUND.withDescription("Instance '%s' not found".formatted(instanceId)));
+    }
+
+    var instance = optionalInstance.get();
+    var settings = instance.settingsSource();
+
+    var cancellationCollector = new CancellationCollector(responseObserver);
+    var service = MCAuthService.convertService(request.getService());
+    cancellationCollector.add(service.createDataAndLogin(
+        deviceCode ->
+          responseObserver.onNext(DeviceCodeAuthResponse.newBuilder()
+            .setDeviceCode(
+              DeviceCode.newBuilder()
+                .setDeviceCode(deviceCode.getDeviceCode())
+                .setUserCode(deviceCode.getUserCode())
+                .setVerificationUri(deviceCode.getVerificationUri())
+                .setDirectVerificationUri(deviceCode.getDirectVerificationUri())
+                .build()
+            ).build()
+          ),
+        settings.get(AccountSettings.USE_PROXIES_FOR_ACCOUNT_AUTH) ? SFHelpers.getRandomEntry(settings.proxies()) : null,
+        instance.scheduler()
+      ))
+      .whenComplete((account, t) -> {
+        if (t != null) {
+          log.error("Error authenticating account", t);
+          responseObserver.onError(new StatusRuntimeException(Status.INTERNAL.withDescription(t.getMessage()).withCause(t)));
+        } else {
+          responseObserver.onNext(DeviceCodeAuthResponse.newBuilder().setAccount(account.toProto()).build());
+          responseObserver.onCompleted();
+        }
+      });
+  }
+
+  @Override
+  public void refresh(RefreshRequest request, StreamObserver<RefreshResponse> responseObserver) {
+    var instanceId = UUID.fromString(request.getInstanceId());
+    ServerRPCConstants.USER_CONTEXT_KEY.get().hasPermissionOrThrow(PermissionContext.instance(InstancePermission.AUTHENTICATE_MC_ACCOUNT, instanceId));
+
+    var optionalInstance = soulFireServer.getInstance(instanceId);
+    if (optionalInstance.isEmpty()) {
+      throw new StatusRuntimeException(Status.NOT_FOUND.withDescription("Instance '%s' not found".formatted(instanceId)));
+    }
+
+    var instance = optionalInstance.get();
+    var settings = instance.settingsSource();
+
+    var cancellationCollector = new CancellationCollector(responseObserver);
     try {
       var receivedAccount = MinecraftAccount.fromProto(request.getAccount());
-      var account = convertService(request.getAccount().getType()).refresh(receivedAccount,
-        convertProxy(request::hasProxy, request::getProxy)).join();
+      var service = MCAuthService.convertService(request.getAccount().getType());
+      var account = cancellationCollector.add(service.refresh(
+        receivedAccount,
+        settings.get(AccountSettings.USE_PROXIES_FOR_ACCOUNT_AUTH) ? SFHelpers.getRandomEntry(settings.proxies()) : null,
+        instance.scheduler()
+      )).join();
 
       responseObserver.onNext(RefreshResponse.newBuilder().setAccount(account.toProto()).build());
       responseObserver.onCompleted();

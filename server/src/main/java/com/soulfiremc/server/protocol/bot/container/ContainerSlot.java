@@ -17,9 +17,10 @@
  */
 package com.soulfiremc.server.protocol.bot.container;
 
-import java.util.Objects;
-import javax.annotation.Nullable;
 import lombok.AllArgsConstructor;
+
+import javax.annotation.Nullable;
+import java.util.Objects;
 
 @AllArgsConstructor
 public final class ContainerSlot {
@@ -43,10 +44,9 @@ public final class ContainerSlot {
     if (obj == this) {
       return true;
     }
-    if (obj == null || obj.getClass() != this.getClass()) {
+    if (!(obj instanceof ContainerSlot that)) {
       return false;
     }
-    var that = (ContainerSlot) obj;
     return this.slot == that.slot && Objects.equals(this.item, that.item);
   }
 

@@ -17,59 +17,60 @@
  */
 package com.soulfiremc.server.plugins;
 
-import com.soulfiremc.server.api.PluginHelper;
-import com.soulfiremc.server.api.SoulFireAPI;
+import com.soulfiremc.server.api.InternalPlugin;
+import com.soulfiremc.server.api.PluginInfo;
 import com.soulfiremc.server.api.event.bot.SFPacketReceiveEvent;
-import com.soulfiremc.server.api.event.lifecycle.SettingsRegistryInitEvent;
+import com.soulfiremc.server.api.event.lifecycle.InstanceSettingsRegistryInitEvent;
 import com.soulfiremc.server.settings.lib.SettingsObject;
-import com.soulfiremc.server.settings.property.BooleanProperty;
-import com.soulfiremc.server.settings.property.ComboProperty;
-import com.soulfiremc.server.settings.property.IntProperty;
-import com.soulfiremc.server.settings.property.Property;
-import com.soulfiremc.server.settings.property.StringProperty;
-import java.util.ArrayList;
-import javax.inject.Inject;
+import com.soulfiremc.server.settings.property.*;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
-import lombok.RequiredArgsConstructor;
 import net.lenni0451.lambdaevents.EventHandler;
 import org.geysermc.mcprotocollib.protocol.data.game.entity.player.HandPreference;
 import org.geysermc.mcprotocollib.protocol.data.game.setting.ChatVisibility;
+import org.geysermc.mcprotocollib.protocol.data.game.setting.ParticleStatus;
 import org.geysermc.mcprotocollib.protocol.data.game.setting.SkinPart;
 import org.geysermc.mcprotocollib.protocol.packet.common.serverbound.ServerboundClientInformationPacket;
-import org.geysermc.mcprotocollib.protocol.packet.login.clientbound.ClientboundGameProfilePacket;
+import org.geysermc.mcprotocollib.protocol.packet.login.clientbound.ClientboundLoginFinishedPacket;
+import org.pf4j.Extension;
 
-@RequiredArgsConstructor(onConstructor_ = @Inject)
-public class ClientSettings implements InternalPlugin {
+import java.util.ArrayList;
+
+@Extension
+public class ClientSettings extends InternalPlugin {
+  public ClientSettings() {
+    super(new PluginInfo(
+      "client-settings",
+      "1.0.0",
+      "Sends client settings to the server",
+      "AlexProgrammerDE",
+      "GPL-3.0",
+      "https://soulfiremc.com"
+    ));
+  }
+
+  @EventHandler
   public static void onPacket(SFPacketReceiveEvent event) {
-    if (event.packet() instanceof ClientboundGameProfilePacket) {
+    if (event.packet() instanceof ClientboundLoginFinishedPacket) {
       var connection = event.connection();
-      var settingsHolder = connection.settingsHolder();
-      if (!settingsHolder.get(ClientSettingsSettings.ENABLED)) {
+      var settingsSource = connection.settingsSource();
+      if (!settingsSource.get(ClientSettingsSettings.ENABLED)) {
         return;
       }
 
       var skinParts = new ArrayList<SkinPart>();
-      if (settingsHolder.get(ClientSettingsSettings.CAPE_ENABLED)) {
-        skinParts.add(SkinPart.CAPE);
-      }
-      if (settingsHolder.get(ClientSettingsSettings.JACKET_ENABLED)) {
-        skinParts.add(SkinPart.JACKET);
-      }
-      if (settingsHolder.get(ClientSettingsSettings.LEFT_SLEEVE_ENABLED)) {
-        skinParts.add(SkinPart.LEFT_SLEEVE);
-      }
-      if (settingsHolder.get(ClientSettingsSettings.RIGHT_SLEEVE_ENABLED)) {
-        skinParts.add(SkinPart.RIGHT_SLEEVE);
-      }
-      if (settingsHolder.get(ClientSettingsSettings.LEFT_PANTS_LEG_ENABLED)) {
-        skinParts.add(SkinPart.LEFT_PANTS_LEG);
-      }
-      if (settingsHolder.get(ClientSettingsSettings.RIGHT_PANTS_LEG_ENABLED)) {
-        skinParts.add(SkinPart.RIGHT_PANTS_LEG);
-      }
-      if (settingsHolder.get(ClientSettingsSettings.HAT_ENABLED)) {
-        skinParts.add(SkinPart.HAT);
+      for (var part : SkinPart.values()) {
+        if (switch (part) {
+          case CAPE -> settingsSource.get(ClientSettingsSettings.CAPE_ENABLED);
+          case JACKET -> settingsSource.get(ClientSettingsSettings.JACKET_ENABLED);
+          case LEFT_SLEEVE -> settingsSource.get(ClientSettingsSettings.LEFT_SLEEVE_ENABLED);
+          case RIGHT_SLEEVE -> settingsSource.get(ClientSettingsSettings.RIGHT_SLEEVE_ENABLED);
+          case LEFT_PANTS_LEG -> settingsSource.get(ClientSettingsSettings.LEFT_PANTS_LEG_ENABLED);
+          case RIGHT_PANTS_LEG -> settingsSource.get(ClientSettingsSettings.RIGHT_PANTS_LEG_ENABLED);
+          case HAT -> settingsSource.get(ClientSettingsSettings.HAT_ENABLED);
+        }) {
+          skinParts.add(part);
+        }
       }
 
       event
@@ -77,142 +78,158 @@ public class ClientSettings implements InternalPlugin {
         .session()
         .send(
           new ServerboundClientInformationPacket(
-            settingsHolder.get(ClientSettingsSettings.CLIENT_LOCALE),
-            settingsHolder.get(ClientSettingsSettings.RENDER_DISTANCE),
-            settingsHolder.get(ClientSettingsSettings.CHAT_VISIBILITY, ChatVisibility.class),
-            settingsHolder.get(ClientSettingsSettings.USE_CHAT_COLORS),
+            settingsSource.get(ClientSettingsSettings.CLIENT_LOCALE),
+            settingsSource.get(ClientSettingsSettings.RENDER_DISTANCE),
+            settingsSource.get(ClientSettingsSettings.CHAT_VISIBILITY, ChatVisibility.class),
+            settingsSource.get(ClientSettingsSettings.USE_CHAT_COLORS),
             skinParts,
-            settingsHolder.get(ClientSettingsSettings.HAND_PREFERENCE, HandPreference.class),
-            settingsHolder.get(ClientSettingsSettings.TEXT_FILTERING_ENABLED),
-            settingsHolder.get(ClientSettingsSettings.ALLOWS_LISTING)));
+            settingsSource.get(ClientSettingsSettings.HAND_PREFERENCE, HandPreference.class),
+            settingsSource.get(ClientSettingsSettings.TEXT_FILTERING_ENABLED),
+            settingsSource.get(ClientSettingsSettings.ALLOWS_LISTING),
+            settingsSource.get(ClientSettingsSettings.PARTICLE_STATUS, ParticleStatus.class)));
     }
   }
 
   @EventHandler
-  public static void onSettingsRegistryInit(SettingsRegistryInitEvent event) {
-    event.settingsRegistry().addClass(ClientSettingsSettings.class, "Client Settings");
-  }
-
-  @Override
-  public void onLoad() {
-    SoulFireAPI.registerListeners(ClientSettings.class);
-    PluginHelper.registerBotEventConsumer(SFPacketReceiveEvent.class, ClientSettings::onPacket);
+  public void onSettingsRegistryInit(InstanceSettingsRegistryInitEvent event) {
+    event.settingsRegistry().addPluginPage(ClientSettingsSettings.class, "Client Settings", this, "settings-2", ClientSettingsSettings.ENABLED);
   }
 
   @NoArgsConstructor(access = AccessLevel.NONE)
   private static class ClientSettingsSettings implements SettingsObject {
-    private static final Property.Builder BUILDER = Property.builder("client-settings");
+    private static final String NAMESPACE = "client-settings";
     public static final BooleanProperty ENABLED =
-      BUILDER.ofBoolean(
-        "enabled",
-        "Send client settings",
-        new String[] {"--send-client-settings"},
-        "Send client settings to the server when joining",
-        true);
+      ImmutableBooleanProperty.builder()
+        .namespace(NAMESPACE)
+        .key("enabled")
+        .uiName("Send client settings")
+        .description("Send client settings to the server when joining")
+        .defaultValue(true)
+        .build();
     public static final StringProperty CLIENT_LOCALE =
-      BUILDER.ofString(
-        "client-locale",
-        "Client locale",
-        new String[] {"--client-locale"},
-        "The locale the client uses for translations",
-        "en_gb");
+      ImmutableStringProperty.builder()
+        .namespace(NAMESPACE)
+        .key("client-locale")
+        .uiName("Client locale")
+        .description("The locale the client uses for translations")
+        .defaultValue("en_gb")
+        .build();
     public static final IntProperty RENDER_DISTANCE =
-      BUILDER.ofInt(
-        "render-distance",
-        "Render distance",
-        new String[] {"--render-distance"},
-        "How far the client renders chunks. (Use this to load more or less chunks from the server)",
-        8,
-        2,
-        32,
-        1);
+      ImmutableIntProperty.builder()
+        .namespace(NAMESPACE)
+        .key("render-distance")
+        .uiName("Render distance")
+        .description("How far the client renders chunks. (Use this to load more or less chunks from the server)")
+        .defaultValue(8)
+        .minValue(2)
+        .maxValue(32)
+        .build();
     public static final ComboProperty CHAT_VISIBILITY =
-      BUILDER.ofEnumMapped(
-        "chat-visibility",
-        "Chat visibility",
-        new String[] {"--chat-visibility"},
-        "What type of chat messages the client will receive",
-        ChatVisibility.values(),
-        ChatVisibility.FULL,
-        ComboProperty::capitalizeEnum);
+      ImmutableComboProperty.builder()
+        .namespace(NAMESPACE)
+        .key("chat-visibility")
+        .uiName("Chat visibility")
+        .description("What type of chat messages the client will receive")
+        .defaultValue(ChatVisibility.FULL.name())
+        .addOptions(ComboProperty.optionsFromEnum(ChatVisibility.values(), ComboProperty::capitalizeEnum))
+        .build();
     public static final BooleanProperty USE_CHAT_COLORS =
-      BUILDER.ofBoolean(
-        "use-chat-colors",
-        "Use chat colors",
-        new String[] {"--use-chat-colors"},
-        "Whether the client will use chat colors",
-        true);
+      ImmutableBooleanProperty.builder()
+        .namespace(NAMESPACE)
+        .key("use-chat-colors")
+        .uiName("Use chat colors")
+        .description("Whether the client will use chat colors")
+        .defaultValue(true)
+        .build();
     public static final BooleanProperty CAPE_ENABLED =
-      BUILDER.ofBoolean(
-        "cape-enabled",
-        "Cape enabled",
-        new String[] {"--cape-enabled"},
-        "Whether to display the bots cape if it has one",
-        true);
+      ImmutableBooleanProperty.builder()
+        .namespace(NAMESPACE)
+        .key("cape-enabled")
+        .uiName("Cape enabled")
+        .description("Whether to display the bots cape if it has one")
+        .defaultValue(true)
+        .build();
     public static final BooleanProperty JACKET_ENABLED =
-      BUILDER.ofBoolean(
-        "jacket-enabled",
-        "Jacket enabled",
-        new String[] {"--jacket-enabled"},
-        "Whether to render the jacket overlay skin layer",
-        true);
+      ImmutableBooleanProperty.builder()
+        .namespace(NAMESPACE)
+        .key("jacket-enabled")
+        .uiName("Jacket enabled")
+        .description("Whether to render the jacket overlay skin layer")
+        .defaultValue(true)
+        .build();
     public static final BooleanProperty LEFT_SLEEVE_ENABLED =
-      BUILDER.ofBoolean(
-        "left-sleeve-enabled",
-        "Left sleeve enabled",
-        new String[] {"--left-sleeve-enabled"},
-        "Whether to render the left overlay skin layer",
-        true);
+      ImmutableBooleanProperty.builder()
+        .namespace(NAMESPACE)
+        .key("left-sleeve-enabled")
+        .uiName("Left sleeve enabled")
+        .description("Whether to render the left overlay skin layer")
+        .defaultValue(true)
+        .build();
     public static final BooleanProperty RIGHT_SLEEVE_ENABLED =
-      BUILDER.ofBoolean(
-        "right-sleeve-enabled",
-        "Right sleeve enabled",
-        new String[] {"--right-sleeve-enabled"},
-        "Whether to render the right overlay skin layer",
-        true);
+      ImmutableBooleanProperty.builder()
+        .namespace(NAMESPACE)
+        .key("right-sleeve-enabled")
+        .uiName("Right sleeve enabled")
+        .description("Whether to render the right overlay skin layer")
+        .defaultValue(true)
+        .build();
     public static final BooleanProperty LEFT_PANTS_LEG_ENABLED =
-      BUILDER.ofBoolean(
-        "left-pants-leg-enabled",
-        "Left pants leg enabled",
-        new String[] {"--left-pants-leg-enabled"},
-        "Whether to render the left pants leg overlay skin layer",
-        true);
+      ImmutableBooleanProperty.builder()
+        .namespace(NAMESPACE)
+        .key("left-pants-leg-enabled")
+        .uiName("Left pants leg enabled")
+        .description("Whether to render the left pants leg overlay skin layer")
+        .defaultValue(true)
+        .build();
     public static final BooleanProperty RIGHT_PANTS_LEG_ENABLED =
-      BUILDER.ofBoolean(
-        "right-pants-leg-enabled",
-        "Right pants leg enabled",
-        new String[] {"--right-pants-leg-enabled"},
-        "Whether to render the right pants leg overlay skin layer",
-        true);
+      ImmutableBooleanProperty.builder()
+        .namespace(NAMESPACE)
+        .key("right-pants-leg-enabled")
+        .uiName("Right pants leg enabled")
+        .description("Whether to render the right pants leg overlay skin layer")
+        .defaultValue(true)
+        .build();
     public static final BooleanProperty HAT_ENABLED =
-      BUILDER.ofBoolean(
-        "hat-enabled",
-        "Hat enabled",
-        new String[] {"--hat-enabled"},
-        "Whether to render the hat overlay skin layer",
-        true);
+      ImmutableBooleanProperty.builder()
+        .namespace(NAMESPACE)
+        .key("hat-enabled")
+        .uiName("Hat enabled")
+        .description("Whether to render the hat overlay skin layer")
+        .defaultValue(true)
+        .build();
     public static final ComboProperty HAND_PREFERENCE =
-      BUILDER.ofEnumMapped(
-        "hand-preference",
-        "Hand preference",
-        new String[] {"--hand-preference"},
-        "What hand the client prefers to use for items",
-        HandPreference.values(),
-        HandPreference.RIGHT_HAND,
-        ComboProperty::capitalizeEnum);
+      ImmutableComboProperty.builder()
+        .namespace(NAMESPACE)
+        .key("hand-preference")
+        .uiName("Hand preference")
+        .description("What hand the client prefers to use for items")
+        .defaultValue(HandPreference.RIGHT_HAND.name())
+        .addOptions(ComboProperty.optionsFromEnum(HandPreference.values(), ComboProperty::capitalizeEnum))
+        .build();
     public static final BooleanProperty TEXT_FILTERING_ENABLED =
-      BUILDER.ofBoolean(
-        "text-filtering-enabled",
-        "Text filtering enabled",
-        new String[] {"--text-filtering-enabled"},
-        "Whether to filter chat messages from the server",
-        true);
+      ImmutableBooleanProperty.builder()
+        .namespace(NAMESPACE)
+        .key("text-filtering-enabled")
+        .uiName("Text filtering enabled")
+        .description("Whether to filter chat messages from the server")
+        .defaultValue(true)
+        .build();
     public static final BooleanProperty ALLOWS_LISTING =
-      BUILDER.ofBoolean(
-        "allows-listing",
-        "Allows listing",
-        new String[] {"--allows-listing"},
-        "Whether the client wants their username to be shown in the server list",
-        true);
+      ImmutableBooleanProperty.builder()
+        .namespace(NAMESPACE)
+        .key("allows-listing")
+        .uiName("Allows listing")
+        .description("Whether the client wants their username to be shown in the server list")
+        .defaultValue(true)
+        .build();
+    public static final ComboProperty PARTICLE_STATUS =
+      ImmutableComboProperty.builder()
+        .namespace(NAMESPACE)
+        .key("particle-status")
+        .uiName("Particle Status")
+        .description("How many particles the client will render")
+        .defaultValue(ParticleStatus.ALL.name())
+        .addOptions(ComboProperty.optionsFromEnum(ParticleStatus.values(), ComboProperty::capitalizeEnum))
+        .build();
   }
 }

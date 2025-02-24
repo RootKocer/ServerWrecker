@@ -2,15 +2,15 @@ plugins {
   idea
   `java-library`
   id("sf-license-conventions")
-  id("sf-checkstyle-conventions")
+  id("sf-formatting-conventions")
   id("io.freefair.lombok")
   id("net.kyori.indra.git")
+  id("io.freefair.javadoc-utf-8")
 }
 
 tasks {
   javadoc {
     title = "SoulFire Javadocs"
-    options.encoding = Charsets.UTF_8.name()
     (options as StandardJavadocDocletOptions).addStringOption("Xdoclint:none", "-quiet")
   }
   compileJava {
@@ -27,10 +27,16 @@ tasks {
     options.isFork = true
   }
   test {
+    reports.junitXml.required = true
+    reports.html.required = true
     useJUnitPlatform()
+    maxParallelForks = Runtime.getRuntime().availableProcessors().div(2).coerceAtLeast(1)
   }
-  jar {
+  withType<Jar> {
     from(rootProject.file("LICENSE"))
+  }
+  delombok {
+    sourcepath.setFrom(sourcepath.plus(compileJava.get().options.generatedSourceOutputDirectory))
   }
 }
 
@@ -40,4 +46,10 @@ java {
   }
   withJavadocJar()
   withSourcesJar()
+}
+
+afterEvaluate {
+  tasks.withType<Zip> {
+    isZip64 = true
+  }
 }

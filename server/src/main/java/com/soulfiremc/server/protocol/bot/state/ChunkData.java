@@ -17,34 +17,19 @@
  */
 package com.soulfiremc.server.protocol.bot.state;
 
-import java.util.Map;
-import java.util.WeakHashMap;
-import java.util.function.Function;
+import com.soulfiremc.server.util.structs.ReferenceCache;
 import org.cloudburstmc.math.vector.Vector3i;
 import org.geysermc.mcprotocollib.protocol.data.game.chunk.ChunkSection;
 import org.geysermc.mcprotocollib.protocol.data.game.chunk.DataPalette;
 
 public class ChunkData {
-  private static final Map<ChunkSection, ChunkSection> SECTION_CACHE = new WeakHashMap<>();
+  private static final ReferenceCache<ChunkSection> SECTION_CACHE = new ReferenceCache<>();
   private final LevelHeightAccessor levelHeightAccessor;
   private final ChunkSection[] sections;
 
-  public ChunkData(LevelHeightAccessor levelHeightAccessor, boolean fillEmpty) {
+  public ChunkData(LevelHeightAccessor levelHeightAccessor) {
     this.levelHeightAccessor = levelHeightAccessor;
     this.sections = new ChunkSection[levelHeightAccessor.getSectionsCount()];
-    if (fillEmpty) {
-      fillEmpty();
-    }
-  }
-
-  public static int log2RoundUp(int num) {
-    return (int) Math.ceil(Math.log(num) / Math.log(2));
-  }
-
-  public void fillEmpty() {
-    for (var i = 0; i < sections.length; i++) {
-      setSection(i, new ChunkSection());
-    }
   }
 
   public int getBlock(int x, int y, int z) {
@@ -65,9 +50,7 @@ public class ChunkData {
   }
 
   public void setSection(int sectionIndex, ChunkSection section) {
-    synchronized (SECTION_CACHE) {
-      sections[sectionIndex] = SECTION_CACHE.computeIfAbsent(section, Function.identity());
-    }
+    sections[sectionIndex] = SECTION_CACHE.poolReference(section);
   }
 
   public void setBlock(Vector3i block, int state) {

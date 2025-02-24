@@ -18,26 +18,17 @@
 package com.soulfiremc.server.util;
 
 import com.google.common.base.Preconditions;
-import com.soulfiremc.util.ResourceHelper;
 import it.unimi.dsi.fastutil.Pair;
+
+import javax.crypto.Cipher;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
-import java.security.GeneralSecurityException;
-import java.security.Key;
-import java.security.KeyFactory;
-import java.security.KeyPair;
-import java.security.KeyPairGenerator;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.security.PrivateKey;
-import java.security.PublicKey;
-import java.security.Signature;
+import java.security.*;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Base64;
-import javax.crypto.Cipher;
 
 public class EncryptionUtils {
   public static final Pair<String, String> PEM_RSA_PUBLIC_KEY_DESCRIPTOR =
@@ -62,7 +53,7 @@ public class EncryptionUtils {
     }
 
     try {
-      YGGDRASIL_SESSION_KEY = parseRsaPublicKey(ResourceHelper.getResourceAsBytes("yggdrasil_session_pubkey.der"));
+      YGGDRASIL_SESSION_KEY = parseRsaPublicKey(SFHelpers.getResourceAsBytes("yggdrasil_session_pubkey.der"));
     } catch (NullPointerException err) {
       throw new RuntimeException(err);
     }

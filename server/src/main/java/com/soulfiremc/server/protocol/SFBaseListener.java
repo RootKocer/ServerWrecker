@@ -17,19 +17,18 @@
  */
 package com.soulfiremc.server.protocol;
 
-import com.soulfiremc.server.protocol.netty.ViaClientSession;
 import com.soulfiremc.server.viaversion.SFVersionConstants;
-import java.security.NoSuchAlgorithmException;
-import java.util.Objects;
-import javax.crypto.KeyGenerator;
-import javax.crypto.SecretKey;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import net.kyori.adventure.text.Component;
 import net.raphimc.vialegacy.protocol.release.r1_6_4tor1_7_2_5.storage.ProtocolMetadataStorage;
+import org.geysermc.mcprotocollib.auth.SessionService;
 import org.geysermc.mcprotocollib.network.Session;
+import org.geysermc.mcprotocollib.network.compression.CompressionConfig;
+import org.geysermc.mcprotocollib.network.compression.ZlibCompression;
 import org.geysermc.mcprotocollib.network.crypt.AESEncryption;
+import org.geysermc.mcprotocollib.network.crypt.EncryptionConfig;
 import org.geysermc.mcprotocollib.network.event.session.ConnectedEvent;
 import org.geysermc.mcprotocollib.network.event.session.SessionAdapter;
 import org.geysermc.mcprotocollib.network.packet.Packet;
@@ -48,17 +47,22 @@ import org.geysermc.mcprotocollib.protocol.packet.configuration.serverbound.Serv
 import org.geysermc.mcprotocollib.protocol.packet.handshake.serverbound.ClientIntentionPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.ClientboundStartConfigurationPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.ServerboundConfigurationAcknowledgedPacket;
-import org.geysermc.mcprotocollib.protocol.packet.login.clientbound.ClientboundGameProfilePacket;
 import org.geysermc.mcprotocollib.protocol.packet.login.clientbound.ClientboundHelloPacket;
 import org.geysermc.mcprotocollib.protocol.packet.login.clientbound.ClientboundLoginCompressionPacket;
 import org.geysermc.mcprotocollib.protocol.packet.login.clientbound.ClientboundLoginDisconnectPacket;
+import org.geysermc.mcprotocollib.protocol.packet.login.clientbound.ClientboundLoginFinishedPacket;
 import org.geysermc.mcprotocollib.protocol.packet.login.serverbound.ServerboundHelloPacket;
 import org.geysermc.mcprotocollib.protocol.packet.login.serverbound.ServerboundKeyPacket;
 import org.geysermc.mcprotocollib.protocol.packet.login.serverbound.ServerboundLoginAcknowledgedPacket;
-import org.geysermc.mcprotocollib.protocol.packet.status.clientbound.ClientboundPongResponsePacket;
+import org.geysermc.mcprotocollib.protocol.packet.ping.clientbound.ClientboundPongResponsePacket;
+import org.geysermc.mcprotocollib.protocol.packet.ping.serverbound.ServerboundPingRequestPacket;
 import org.geysermc.mcprotocollib.protocol.packet.status.clientbound.ClientboundStatusResponsePacket;
-import org.geysermc.mcprotocollib.protocol.packet.status.serverbound.ServerboundPingRequestPacket;
 import org.geysermc.mcprotocollib.protocol.packet.status.serverbound.ServerboundStatusRequestPacket;
+
+import javax.crypto.KeyGenerator;
+import javax.crypto.SecretKey;
+import java.security.NoSuchAlgorithmException;
+import java.util.Objects;
 
 @RequiredArgsConstructor
 public class SFBaseListener extends SessionAdapter {
@@ -68,32 +72,18 @@ public class SFBaseListener extends SessionAdapter {
   @SneakyThrows
   @Override
   public void packetReceived(Session session, Packet packet) {
-    if (!(session instanceof ViaClientSession viaSession)) {
-      throw new IllegalStateException("Session is not a ViaSession!");
-    }
-
     var protocol = (MinecraftProtocol) session.getPacketProtocol();
     if (protocol.getInboundState() == ProtocolState.LOGIN) {
       if (packet instanceof ClientboundHelloPacket helloPacket) {
         var viaUserConnection = session.getFlag(SFProtocolConstants.VIA_USER_CONNECTION);
 
-        var authSupport = botConnection.minecraftAccount().isPremiumJava();
-        if (!authSupport) {
-          botConnection
-            .logger()
-            .info(
-              "Server sent a encryption request, but we're offline mode. Not authenticating with mojang.");
-        }
-
-        var auth = authSupport;
+        var needsAuth = helloPacket.isShouldAuthenticate();
         var isLegacy = SFVersionConstants.isLegacy(botConnection.protocolVersion());
-        if (auth && isLegacy) {
-          auth =
+        if (needsAuth && isLegacy) {
+          needsAuth =
             Objects.requireNonNull(viaUserConnection.get(ProtocolMetadataStorage.class))
               .authenticate;
         }
-
-        botConnection.logger().debug("Performing mojang request: {}", auth);
 
         SecretKey key;
         try {
@@ -104,33 +94,42 @@ public class SFBaseListener extends SessionAdapter {
           throw new IllegalStateException("Failed to generate shared key.", e);
         }
 
-        if (auth) {
-          var serverId =
-            SFSessionService.getServerId(
-              helloPacket.getServerId(), helloPacket.getPublicKey(), key);
-          botConnection.joinServerId(serverId, viaSession);
+        botConnection.logger().debug("Needs auth: {}", needsAuth);
+        if (needsAuth) {
+          var canDoAuth = botConnection.minecraftAccount().isPremiumJava();
+          botConnection.logger().debug("Can do auth: {}", canDoAuth);
+          if (canDoAuth) {
+            var serverId =
+              SessionService.getServerId(
+                helloPacket.getServerId(), helloPacket.getPublicKey(), key);
+            botConnection.joinServerId(serverId);
+          } else {
+            botConnection
+              .logger()
+              .info(
+                "Server sent a encryption request, but account is offline mode. Not authenticating with mojang.");
+          }
         }
 
         var keyPacket = new ServerboundKeyPacket(helloPacket.getPublicKey(), key, helloPacket.getChallenge());
 
+        var encryptionConfig = new EncryptionConfig(new AESEncryption(key));
         if (!isLegacy) {
-          var encryption = new AESEncryption(key);
-          session.send(keyPacket, () -> session.enableEncryption(encryption));
+          session.send(keyPacket, () -> session.setEncryption(encryptionConfig));
         } else {
           botConnection.logger().debug("Storing legacy secret key.");
-          session.setFlag(SFProtocolConstants.ENCRYPTION_SECRET_KEY, key);
+          session.setFlag(SFProtocolConstants.VL_ENCRYPTION_CONFIG, encryptionConfig);
         }
-      } else if (packet instanceof ClientboundGameProfilePacket) {
-        session.switchInboundProtocol(() -> protocol.setInboundState(ProtocolState.CONFIGURATION));
+      } else if (packet instanceof ClientboundLoginFinishedPacket) {
+        session.switchInboundState(() -> protocol.setInboundState(ProtocolState.CONFIGURATION));
         session.send(new ServerboundLoginAcknowledgedPacket());
-        session.switchOutboundProtocol(() -> protocol.setOutboundState(ProtocolState.CONFIGURATION));
-
-        // Send client brand here
-        // Send client information here
+        session.switchOutboundState(() -> protocol.setOutboundState(ProtocolState.CONFIGURATION));
       } else if (packet instanceof ClientboundLoginDisconnectPacket loginDisconnectPacket) {
         session.disconnect(loginDisconnectPacket.getReason());
       } else if (packet instanceof ClientboundLoginCompressionPacket loginCompressionPacket) {
-        viaSession.setCompressionThreshold(loginCompressionPacket.getThreshold(), true);
+        if (loginCompressionPacket.getThreshold() >= 0) {
+          session.setCompression(new CompressionConfig(loginCompressionPacket.getThreshold(), new ZlibCompression(), true));
+        }
       }
     } else if (protocol.getInboundState() == ProtocolState.STATUS) {
       if (packet instanceof ClientboundStatusResponsePacket) {
@@ -146,15 +145,15 @@ public class SFBaseListener extends SessionAdapter {
       } else if (packet instanceof ClientboundDisconnectPacket disconnectPacket) {
         session.disconnect(disconnectPacket.getReason());
       } else if (packet instanceof ClientboundStartConfigurationPacket) {
-        session.switchInboundProtocol(() -> protocol.setInboundState(ProtocolState.CONFIGURATION));
+        session.switchInboundState(() -> protocol.setInboundState(ProtocolState.CONFIGURATION));
         session.send(new ServerboundConfigurationAcknowledgedPacket());
-        session.switchOutboundProtocol(() -> protocol.setOutboundState(ProtocolState.CONFIGURATION));
+        session.switchOutboundState(() -> protocol.setOutboundState(ProtocolState.CONFIGURATION));
       }
     } else if (protocol.getInboundState() == ProtocolState.CONFIGURATION) {
       if (packet instanceof ClientboundFinishConfigurationPacket) {
-        session.switchInboundProtocol(() -> protocol.setInboundState(ProtocolState.GAME));
+        session.switchInboundState(() -> protocol.setInboundState(ProtocolState.GAME));
         session.send(new ServerboundFinishConfigurationPacket());
-        session.switchOutboundProtocol(() -> protocol.setOutboundState(ProtocolState.GAME));
+        session.switchOutboundState(() -> protocol.setOutboundState(ProtocolState.GAME));
       } else if (packet instanceof ClientboundSelectKnownPacks selectKnownPacks) {
         session.send(new ServerboundSelectKnownPacks(BuiltInKnownPackRegistry.INSTANCE
           .getMatchingPacks(selectKnownPacks.getKnownPacks())));
@@ -164,31 +163,24 @@ public class SFBaseListener extends SessionAdapter {
 
   @Override
   public void connected(ConnectedEvent event) {
-    var originalAddress = botConnection.resolvedAddress().originalAddress();
+    var resolvedAddress = botConnection.resolvedAddress().resolvedAddress();
     var session = event.getSession();
     var protocol = (MinecraftProtocol) session.getPacketProtocol();
     var intention = new ClientIntentionPacket(protocol.getCodec().getProtocolVersion(),
-      originalAddress.host(),
-      originalAddress.port(),
-      switch (this.targetState) {
+      resolvedAddress.getHostName(),
+      resolvedAddress.getPort(),
+      switch (targetState) {
         case LOGIN -> HandshakeIntent.LOGIN;
         case STATUS -> HandshakeIntent.STATUS;
-        default -> throw new IllegalStateException("Unexpected value: " + this.targetState);
+        default -> throw new IllegalStateException("Unexpected value: " + targetState);
       });
 
+    session.switchInboundState(() -> protocol.setInboundState(this.targetState));
+    session.send(intention);
+    session.switchOutboundState(() -> protocol.setOutboundState(this.targetState));
     switch (this.targetState) {
-      case LOGIN -> {
-        session.switchInboundProtocol(() -> protocol.setInboundState(ProtocolState.LOGIN));
-        session.send(intention);
-        session.switchOutboundProtocol(() -> protocol.setOutboundState(ProtocolState.LOGIN));
-        session.send(new ServerboundHelloPacket(botConnection.accountName(), botConnection.accountProfileId()));
-      }
-      case STATUS -> {
-        session.switchInboundProtocol(() -> protocol.setInboundState(ProtocolState.STATUS));
-        session.send(intention);
-        session.switchOutboundProtocol(() -> protocol.setOutboundState(ProtocolState.STATUS));
-        session.send(new ServerboundStatusRequestPacket());
-      }
+      case LOGIN -> session.send(new ServerboundHelloPacket(botConnection.accountName(), botConnection.accountProfileId()));
+      case STATUS -> session.send(new ServerboundStatusRequestPacket());
     }
   }
 }

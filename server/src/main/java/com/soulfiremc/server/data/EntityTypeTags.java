@@ -17,9 +17,10 @@
  */
 package com.soulfiremc.server.data;
 
+import net.kyori.adventure.key.KeyPattern;
+
 import java.util.ArrayList;
 import java.util.List;
-import net.kyori.adventure.key.KeyPattern;
 
 @SuppressWarnings("unused")
 public class EntityTypeTags {
@@ -60,6 +61,7 @@ public class EntityTypeTags {
   public static final TagKey<EntityType> IMMUNE_TO_OOZING = register("minecraft:immune_to_oozing");
   public static final TagKey<EntityType> IMMUNE_TO_INFESTED = register("minecraft:immune_to_infested");
   public static final TagKey<EntityType> REDIRECTABLE_PROJECTILE = register("minecraft:redirectable_projectile");
+  public static final TagKey<EntityType> BOAT = register("minecraft:boat");
   //@formatter:on
 
   private EntityTypeTags() {}

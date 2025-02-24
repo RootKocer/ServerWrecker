@@ -17,24 +17,19 @@
  */
 package com.soulfiremc.server.pathfinding;
 
-import com.soulfiremc.server.data.AttributeType;
-import com.soulfiremc.server.data.BlockType;
-import com.soulfiremc.server.data.FluidTags;
-import com.soulfiremc.server.data.RegistryKeys;
-import com.soulfiremc.server.data.TagKey;
+import com.soulfiremc.server.data.*;
 import com.soulfiremc.server.pathfinding.graph.ProjectedInventory;
-import com.soulfiremc.server.protocol.bot.container.PlayerInventoryContainer;
 import com.soulfiremc.server.protocol.bot.container.SFItemStack;
 import com.soulfiremc.server.protocol.bot.state.EntityEffectState;
 import com.soulfiremc.server.protocol.bot.state.TagsState;
-import com.soulfiremc.server.protocol.bot.state.entity.ClientEntity;
-import com.soulfiremc.server.util.BlockTypeHelper;
-import java.util.Arrays;
-import java.util.OptionalInt;
-import org.geysermc.mcprotocollib.protocol.data.game.entity.Effect;
-import org.geysermc.mcprotocollib.protocol.data.game.item.component.DataComponentType;
+import com.soulfiremc.server.protocol.bot.state.entity.LocalPlayer;
+import com.soulfiremc.server.util.SFBlockHelpers;
+import org.geysermc.mcprotocollib.protocol.data.game.item.component.DataComponentTypes;
 import org.geysermc.mcprotocollib.protocol.data.game.item.component.HolderSet;
 import org.jetbrains.annotations.Nullable;
+
+import java.util.Arrays;
+import java.util.OptionalInt;
 
 /**
  * This class helps in calculating the costs of different actions. It is used in the pathfinding
@@ -43,7 +38,7 @@ import org.jetbrains.annotations.Nullable;
  * using the distance in blocks. The cost of breaking a block is calculated using the time it takes
  * in ticks to break a block and then converted to a relative heuristic.
  */
-public class Costs {
+public final class Costs {
   /**
    * The distance in blocks between two points that are directly next to each other.
    */
@@ -56,11 +51,11 @@ public class Costs {
   /**
    * We don't want a bot that frequently tries to break blocks instead of walking around them.
    */
-  public static final double BREAK_BLOCK_ADDITION = 2;
+  public static final double BREAK_BLOCK_PENALTY = Integer.getInteger("sf.pathfinding-break-block-penalty", 2);
   /**
    * We don't want a bot that frequently tries to place blocks instead of finding smarter paths.
    */
-  public static final double PLACE_BLOCK = 5;
+  public static final double PLACE_BLOCK_PENALTY = Integer.getInteger("sf.pathfinding-place-block-penalty", 5);
   /**
    * A normal server runs at 20 ticks per second.
    */
@@ -107,17 +102,16 @@ public class Costs {
 
   private Costs() {}
 
-  public static BlockMiningCosts calculateBlockBreakCost(
+  public static @Nullable BlockMiningCosts calculateBlockBreakCost(
     TagsState tagsState,
-    @Nullable ClientEntity entity,
-    @Nullable PlayerInventoryContainer playerInventory,
+    @Nullable LocalPlayer entity,
     ProjectedInventory inventory,
     BlockType blockType) {
     var lowestMiningTicks = Integer.MAX_VALUE;
     SFItemStack bestItem = null;
     var willDropUsableBlockItem = false;
     for (var slot : inventory.usableToolsAndNull()) {
-      var miningTicks = getRequiredMiningTicks(tagsState, entity, playerInventory, true, slot, blockType);
+      var miningTicks = getRequiredMiningTicks(tagsState, entity, true, slot, blockType);
       if (miningTicks.ticks() < lowestMiningTicks) {
         lowestMiningTicks = miningTicks.ticks();
         bestItem = slot;
@@ -126,29 +120,27 @@ public class Costs {
     }
 
     if (lowestMiningTicks == Integer.MAX_VALUE) {
-      // We would expect there is at least a cost to break a block without a tool
-      throw new IllegalStateException("No way found to break block!");
+      return null;
     }
 
     return new BlockMiningCosts(
-      (lowestMiningTicks / TICKS_PER_BLOCK) + BREAK_BLOCK_ADDITION, bestItem, willDropUsableBlockItem);
+      (lowestMiningTicks / TICKS_PER_BLOCK) + BREAK_BLOCK_PENALTY, bestItem, willDropUsableBlockItem);
   }
 
   // Time in ticks
   public static TickResult getRequiredMiningTicks(
     TagsState tagsState,
-    @Nullable ClientEntity entity,
-    @Nullable PlayerInventoryContainer inventoryContainer,
+    @Nullable LocalPlayer entity,
     boolean onGround,
     @Nullable SFItemStack itemStack,
     BlockType blockType) {
     var correctToolUsed = isCorrectToolUsed(tagsState, itemStack, blockType);
 
     // If this value adds up over all ticks to 1, the block is fully mined
-    var damage = getBlockDamagePerTick(tagsState, entity, inventoryContainer, onGround, itemStack, blockType);
+    var damage = getBlockDamagePerTick(tagsState, entity, onGround, itemStack, blockType);
 
-    var creativeMode = entity != null && entity.abilities().creativeModeBreak();
-    var willDropUsableBlockItem = correctToolUsed && !creativeMode && BlockTypeHelper.isUsableBlockItem(blockType);
+    var creativeMode = entity != null && entity.abilitiesState().instabuild();
+    var willDropUsableBlockItem = correctToolUsed && !creativeMode && SFBlockHelpers.isUsableBlockItem(blockType);
 
     // Insta mine
     if (damage >= 1) {
@@ -159,12 +151,11 @@ public class Costs {
   }
 
   private static float getBlockDamagePerTick(TagsState tagsState,
-                                             @Nullable ClientEntity entity,
-                                             @Nullable PlayerInventoryContainer inventoryContainer,
+                                             @Nullable LocalPlayer entity,
                                              boolean onGround,
                                              @Nullable SFItemStack itemStack,
                                              BlockType blockType) {
-    if (entity != null && entity.abilities().creativeModeBreak()) {
+    if (entity != null && entity.abilitiesState().instabuild()) {
       // We instantly break any block in creative mode
       return 1.0F;
     }
@@ -174,14 +165,13 @@ public class Costs {
       return 0.0F;
     } else {
       var currentToolDivision = isCorrectToolUsed(tagsState, itemStack, blockType) ? 30 : 100;
-      return getPlayerBlockDamagePerTick(tagsState, entity, inventoryContainer, onGround, itemStack, blockType)
+      return getPlayerBlockDamagePerTick(tagsState, entity, onGround, itemStack, blockType)
         / blockDestroyTime / (float) currentToolDivision;
     }
   }
 
   private static float getPlayerBlockDamagePerTick(TagsState tagsState,
-                                                   @Nullable ClientEntity entity,
-                                                   @Nullable PlayerInventoryContainer inventoryContainer,
+                                                   @Nullable LocalPlayer entity,
                                                    boolean onGround,
                                                    @Nullable SFItemStack itemStack,
                                                    BlockType blockType) {
@@ -227,7 +217,7 @@ public class Costs {
       return 1;
     }
 
-    var tool = itemStack.components().getOptional(DataComponentType.TOOL);
+    var tool = itemStack.getDataComponents().getOptional(DataComponentTypes.TOOL);
     if (tool.isEmpty()) {
       return 1;
     }
@@ -250,7 +240,7 @@ public class Costs {
       return false;
     }
 
-    var tool = itemStack.components().getOptional(DataComponentType.TOOL);
+    var tool = itemStack.getDataComponents().getOptional(DataComponentTypes.TOOL);
     if (tool.isEmpty()) {
       return false;
     }
@@ -265,14 +255,13 @@ public class Costs {
   }
 
   private static boolean isInHolderSet(TagsState tagsState, HolderSet holderSet, BlockType blockType) {
-    return Arrays.stream(holderSet.resolve(t -> tagsState.getValuesOfTag(blockType,
-        TagKey.key(t, RegistryKeys.BLOCK))))
+    return Arrays.stream(holderSet.resolve(t -> tagsState.<BlockType>getValuesOfTag(TagKey.key(t, RegistryKeys.BLOCK))))
       .anyMatch(i -> i == blockType.id());
   }
 
   private static OptionalInt getDigSpeedAmplifier(EntityEffectState effectState) {
-    var hasteEffect = effectState.getEffect(Effect.HASTE);
-    var conduitPowerEffect = effectState.getEffect(Effect.CONDUIT_POWER);
+    var hasteEffect = effectState.getEffect(EffectType.DIG_SPEED);
+    var conduitPowerEffect = effectState.getEffect(EffectType.CONDUIT_POWER);
 
     if (hasteEffect.isPresent() && conduitPowerEffect.isPresent()) {
       return OptionalInt.of(
@@ -289,7 +278,7 @@ public class Costs {
   }
 
   private static OptionalInt getDigSlowdownAmplifier(EntityEffectState effectState) {
-    var miningFatigueEffect = effectState.getEffect(Effect.MINING_FATIGUE);
+    var miningFatigueEffect = effectState.getEffect(EffectType.DIG_SLOWDOWN);
 
     return miningFatigueEffect
       .map(effectData -> OptionalInt.of(effectData.amplifier()))

@@ -17,22 +17,26 @@
  */
 package com.soulfiremc.server.data;
 
+import com.github.benmanes.caffeine.cache.Caffeine;
+import com.github.benmanes.caffeine.cache.LoadingCache;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
 import com.google.gson.TypeAdapter;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
-import com.soulfiremc.util.ResourceHelper;
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.function.Function;
+import com.soulfiremc.server.util.SFHelpers;
+import com.soulfiremc.server.util.structs.GsonInstance;
 import net.kyori.adventure.key.Key;
 
+import java.io.IOException;
+import java.time.Duration;
+import java.util.Map;
+import java.util.Objects;
+import java.util.function.Function;
+
 public class GsonDataHelper {
-  private static final Map<String, JsonArray> LOADED_DATA = new HashMap<>();
-  private static final TypeAdapter<Key> RESOURCE_KEY_ADAPTER =
+  public static final TypeAdapter<Key> RESOURCE_KEY_ADAPTER =
     new TypeAdapter<>() {
       @Override
       public void write(JsonWriter out, Key value) throws IOException {
@@ -46,10 +50,19 @@ public class GsonDataHelper {
         return Key.key(key);
       }
     };
-  private static final Function<Map<Class<?>, TypeAdapter<?>>, Gson> GSON_FACTORY = (typeAdapters) -> {
+  private static final LoadingCache<String, JsonArray> LOADED_DATA = Caffeine.newBuilder()
+    .expireAfterAccess(Duration.ofSeconds(1))
+    .build(file -> {
+      try {
+        return GsonInstance.GSON.fromJson(SFHelpers.getResourceAsString(file), JsonArray.class);
+      } catch (Exception e) {
+        throw new RuntimeException("Failed to load data file " + file, e);
+      }
+    });
+  private static final Function<Map<Class<?>, Object>, Gson> GSON_FACTORY = (typeAdapters) -> {
     var builder = new GsonBuilder()
       .registerTypeAdapter(Key.class, RESOURCE_KEY_ADAPTER)
-      .registerTypeAdapter(JsonDataComponents.class, JsonDataComponents.SERIALIZER);
+      .registerTypeAdapter(ByteDataComponents.class, ByteDataComponents.SERIALIZER);
 
     for (var entry : typeAdapters.entrySet()) {
       builder.registerTypeAdapter(entry.getKey(), entry.getValue());
@@ -63,21 +76,9 @@ public class GsonDataHelper {
   }
 
   public static <T> T fromJson(String dataFile, String dataKey, Class<T> clazz,
-                               Map<Class<?>, TypeAdapter<?>> typeAdapters) {
-    var gson = GSON_FACTORY.apply(typeAdapters);
-    var array =
-      LOADED_DATA.computeIfAbsent(
-        dataFile,
-        file -> {
-          var data = new JsonArray();
-          try {
-            data =
-              gson.fromJson(ResourceHelper.getResourceAsString(file), JsonArray.class);
-          } catch (Exception e) {
-            throw new RuntimeException("Failed to load data file " + file, e);
-          }
-          return data;
-        });
+                               Map<Class<?>, Object> typeAdapters) {
+    var gson = createGson(typeAdapters);
+    var array = Objects.requireNonNull(LOADED_DATA.get(dataFile));
     for (var element : array) {
       if (element.getAsJsonObject().get("key").getAsString().equals(dataKey)) {
         return gson.fromJson(element, clazz);
@@ -85,5 +86,9 @@ public class GsonDataHelper {
     }
 
     throw new RuntimeException("Failed to find data key %s in file %s".formatted(dataKey, dataFile));
+  }
+
+  public static Gson createGson(Map<Class<?>, Object> typeAdapters) {
+    return GSON_FACTORY.apply(typeAdapters);
   }
 }
